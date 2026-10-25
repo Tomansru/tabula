@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>New Tab</title>
+  <link rel="icon" href="icons/icon32.png">
+  <script src="js/boot.js"></script>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="stage"></div>
+
+  <!-- The frame: small captions in the corners; the settings button has the bottom-left one (see brand.html, "Frame"). -->
+  <header class="frame frame-top">
+    <span class="cap motto" id="capMotto"></span>
+    <span class="cap" id="capDay"></span>
+  </header>
+  <footer class="frame frame-bottom">
+    <span class="cap day-progress" id="capProgress"><span></span><i><b></b></i></span>
+  </footer>
+
+  <!-- Three columns with one top line: weather · clock · tasks. -->
+  <div class="layout">
+    <aside class="col col-left">
+      <button class="weather" id="weather" type="button" hidden></button>
+    </aside>
+    <main class="col home">
+      <section class="hero">
+        <time class="clock" id="clock"><span class="hm"></span><span class="side"><span class="sec"></span><span class="ampm"></span></span></time>
+        <div class="date" id="date"></div>
+        <form class="search" id="search" role="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
+          <input id="q" type="search" data-i18n-ph="searchWeb" autocomplete="off" spellcheck="false" enterkeyhint="search">
+          <kbd aria-hidden="true">↵</kbd>
+        </form>
+      </section>
+      <nav class="bookmarks" id="bookmarks"></nav>
+    </main>
+    <aside class="col todos">
+      <div class="todos-card" id="todos"></div>
+    </aside>
+  </div>
+
+  <button class="gear" id="openSettings" type="button" data-i18n-title="settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+  </button>
+
+  <!-- Settings drawer -->
+  <dialog id="settings" class="drawer">
+    <div class="drawer-inner">
+      <header class="drawer-head">
+        <button type="button" class="back" id="sBack" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+          <span data-i18n="back"></span>
+        </button>
+        <h2 id="sTitle" data-i18n="settings"></h2>
+        <button type="button" class="ibtn" id="sClose" data-i18n-title="close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </header>
+
+      <!-- Two pages in one drawer: the main settings, and one theme's own settings (opened from its card). -->
+      <div id="sMain">
+      <nav class="settings-nav" id="sNav"><button type="button" data-i18n="general"></button><button type="button" data-i18n="look"></button><button type="button" data-i18n="clock"></button><button type="button" data-i18n="weather"></button><button type="button" data-i18n="themes"></button><button type="button" data-i18n="data"></button></nav>
+      <section>
+        <h3 data-i18n="general"></h3>
+        <label class="row"><span data-i18n="language"></span><select id="sLang"></select></label>
+        <div class="field"><span data-i18n="mode"></span>
+          <div class="seg wide" id="sTheme">
+            <button type="button" data-v="auto" data-i18n="themeAuto"></button>
+            <button type="button" data-v="light" data-i18n="themeLight"></button>
+            <button type="button" data-v="dark" data-i18n="themeDark"></button>
+            <button type="button" data-v="sun" data-i18n="themeSun"></button>
+          </div>
+          <p class="note" id="sModeNote" data-i18n="modeByTheme" hidden></p>
+        </div>
+        <label class="row"><span data-i18n="showSearch"></span><input type="checkbox" class="switch" id="sSearch"></label>
+        <label class="row"><span data-i18n="searchEngine"></span><select id="sEngine"></select></label>
+        <label class="row"><span data-i18n="bmNewTab"></span><input type="checkbox" class="switch" id="sBmNewTab"></label>
+        <div class="field" id="sIconsField">
+          <button type="button" class="btn ghost" id="sIcons" data-i18n="improveIcons"></button>
+          <p class="note" id="sIconsNote"></p>
+        </div>
+        <label class="row"><span data-i18n="showTodos"></span><input type="checkbox" class="switch" id="sTodos"></label>
+      </section>
+
+      <section>
+        <h3 data-i18n="look"></h3>
+        <div class="field"><span data-i18n="typeset"></span>
+          <div class="seg wide" id="sType">
+            <button type="button" data-v="air" data-i18n="typeAir"></button>
+            <button type="button" data-v="classic" data-i18n="typeClassic"></button>
+          </div>
+        </div>
+        <label class="row"><span data-i18n="captions"></span><input type="checkbox" class="switch" id="sCaps"></label>
+        <label class="row"><span data-i18n="todoCard"></span><input type="checkbox" class="switch" id="sTodoCard"></label>
+      </section>
+
+      <section>
+        <h3 data-i18n="clock"></h3>
+        <label class="row"><span data-i18n="h24"></span><input type="checkbox" class="switch" id="sH24"></label>
+        <label class="row"><span data-i18n="seconds"></span><input type="checkbox" class="switch" id="sSec"></label>
+        <label class="row"><span><span data-i18n="clockFx"></span> <span class="badge" data-i18n="soon"></span></span><input type="checkbox" class="switch" id="sFx" disabled></label>
+      </section>
+
+      <section>
+        <h3 data-i18n="weather"></h3>
+        <label class="row"><span data-i18n="showWeather"></span><input type="checkbox" class="switch" id="sWx"></label>
+        <div class="row"><span data-i18n="units"></span>
+          <div class="seg" id="sUnits">
+            <button type="button" data-v="c">°C</button>
+            <button type="button" data-v="f">°F</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="row tight"><span data-i18n="location"></span><b class="loc-current" id="sLocCurrent"></b></div>
+          <input type="search" id="sLocSearch" data-i18n-ph="searchCity" autocomplete="off" spellcheck="false">
+          <ul class="loc-results" id="sLocResults"></ul>
+          <button type="button" class="btn ghost" id="sLocGeo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>
+            <span data-i18n="useMyLocation"></span>
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <h3 data-i18n="themes"></h3>
+        <div class="theme-list" id="sThemes" role="radiogroup"></div>
+      </section>
+
+      <section>
+        <h3 data-i18n="data"></h3>
+        <div class="btns">
+          <button type="button" class="btn ghost" id="sExport" data-i18n="export"></button>
+          <label class="btn ghost"><input type="file" accept="application/json,.json" id="sImport" hidden><span data-i18n="import"></span></label>
+        </div>
+        <p class="note" data-i18n="privacyNote"></p>
+      </section>
+      </div>
+
+      <div id="sThemePage" hidden>
+        <div class="theme-hero" id="sThemeHero"></div>
+        <div class="theme-controls" id="sThemeControls"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Weather details -->
+  <dialog id="wxDialog" class="modal wx-modal"><div class="wx-body" id="wxBody"></div></dialog>
+
+  <!-- Bookmark editor -->
+  <dialog id="bmDialog" class="modal">
+    <form id="bmForm" class="modal-inner" novalidate>
+      <div class="bm-top">
+        <span class="tile-icon" id="bmPreview"></span>
+        <h2 id="bmHeading"></h2>
+      </div>
+      <label class="field"><span data-i18n="url"></span><input id="bmUrl" type="text" inputmode="url" placeholder="https://" spellcheck="false" autocomplete="off"></label>
+      <label class="field"><span data-i18n="title"></span><input id="bmName" type="text" autocomplete="off"></label>
+      <div class="field"><span data-i18n="icon"></span>
+        <div class="seg wide" id="bmMode">
+          <button type="button" data-v="auto" data-i18n="iconAuto"></button>
+          <button type="button" data-v="emoji" data-i18n="iconEmoji"></button>
+          <button type="button" data-v="letter" data-i18n="iconLetter"></button>
+        </div>
+      </div>
+      <div class="mode-auto">
+        <button type="button" class="btn ghost" id="bmFetch" data-i18n="fetchIcon"></button>
+        <p class="note" data-i18n="iconHint"></p>
+      </div>
+      <div class="mode-emoji">
+        <input id="bmEmoji" type="text" class="emoji-input" autocomplete="off">
+        <div class="emoji-picks" id="bmPicks"></div>
+      </div>
+      <footer class="modal-foot">
+        <button type="button" class="btn ghost danger" id="bmDelete" data-i18n="delete"></button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="bmCancel" data-i18n="cancel"></button>
+        <button type="submit" class="btn primary" id="bmSave" data-i18n="save"></button>
+      </footer>
+    </form>
+  </dialog>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

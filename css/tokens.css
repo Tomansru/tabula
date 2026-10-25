@@ -1,0 +1,67 @@
+/* ============ Tabula micro brand book: the tokens ============
+   Everything on the home screen is built from these values; brand.html shows them.
+   Rules of thumb:
+   - Space comes in steps of 4 (s-1 … s-8). Gaps inside a component ≤ s-4, between components ≥ s-5.
+   - Corners: control 10, tile 14, card 20, panel 26; pill/circle for round things only.
+     A rounded box inside another one gets (outer radius − padding), never more than its parent.
+   - The frame: everything keeps --edge from the window edges; the corners hold small captions only.
+   - Three columns, one top line: the weather card, the clock and the task card all start on --top.
+   - Type: one family, five sizes (micro 11, small 12, body 14, lead 16, title 22) plus the clock.
+     Captions are micro uppercase with wide tracking; numbers are tabular. */
+:root {
+  /* space, 4 px grid */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px;
+
+  /* corners */
+  --r-xs: 6px;     /* checkbox, chip inside a control */
+  --r-sm: 10px;    /* button, input, list row, segmented control */
+  --r-md: 14px;    /* bookmark icon, theme card, weather tile */
+  --r-lg: 20px;    /* card: weather, tasks */
+  --r-xl: 26px;    /* panel: settings, dialogs */
+  --r-pill: 999px; /* search, chips, toggles */
+
+  /* frame */
+  --edge: clamp(20px, 2.8vw, 44px);           /* distance to the window edges and the corner captions */
+  --top: clamp(104px, 21vh, 210px);           /* the shared top line of the three columns */
+  --side: clamp(250px, 22vw, 320px);          /* side column width (weather, tasks) */
+  --center: 520px;                            /* search and bookmarks width */
+
+  /* type */
+  --t-micro: 11px; --t-small: 12px; --t-body: 14px; --t-lead: 16px; --t-title: 22px;
+  --track-micro: .16em;
+  --w-light: 250; --w-regular: 400; --w-medium: 500; --w-strong: 600;
+
+  /* motion */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --t-fast: .15s; --t-base: .25s; --t-slow: .6s;
+
+  /* a soft halo that keeps small text readable over a bright horizon or a picture */
+  --halo: 0 1px 10px rgb(255 255 255 / .45);
+
+  /* layers */
+  --z-stage: 0; --z-page: 1; --z-frame: 2;
+}
+
+html[data-theme="dark"] { --halo: 0 1px 12px rgb(8 12 28 / .45); }
+
+/* Typography presets (Settings → Typography). "Air" is the editorial default, "Classic" is the earlier look. */
+:root, html[data-type="air"] {
+  --clock-size: clamp(84px, 10.5vw, 156px);
+  --clock-weight: 250;
+  --clock-track: -.06em;
+  --side-size: .17em;        /* seconds and AM/PM, relative to the clock */
+  --date-size: var(--t-body);
+  --date-weight: var(--w-regular);
+  --title-weight: var(--w-medium);
+  --body-size: var(--t-body);
+}
+html[data-type="classic"] {
+  --clock-size: clamp(76px, 12.5vw, 178px);
+  --clock-weight: 300;
+  --clock-track: -.045em;
+  --side-size: .27em;
+  --date-size: clamp(15px, 1.5vw, 19px);
+  --date-weight: var(--w-regular);
+  --title-weight: var(--w-strong);
+  --body-size: 14.5px;
+}
