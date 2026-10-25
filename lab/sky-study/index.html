@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Tabula · Дыхание неба</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sky.js" defer></script>
+</head>
+<body>
+<main id="lab">
+  <header>
+    <div><div class="eyebrow">TABULA / ЭТЮД 01</div><h1>Дыхание неба</h1>
+      <p class="intro">Один день, три настроения. Свет поднимается из дымки, солнце проходит над часами, и небо медленно уступает место звёздам.</p></div>
+    <div class="segment" id="page-theme" aria-label="Тема страницы" role="group">
+      <button data-theme="system" aria-pressed="true">Авто</button><button data-theme="light" aria-pressed="false">Светлая</button><button data-theme="dark" aria-pressed="false">Тёмная</button>
+    </div>
+  </header>
+  <section class="controls" aria-label="Управление небом">
+    <div class="transport"><button id="play" class="button play" aria-pressed="false">▶ Запустить</button>
+      <label class="timeline"><span class="sr-only">Время от полуночи до полудня следующего дня</span><input id="time" type="range" min="0" max="36" step="0.005" value="6.3"><span class="ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>00:00 +1</span><span>12:00 +1</span></span></label>
+      <div class="time-readout"><output id="readout">06:18</output><span id="phase">Рассвет</span></div>
+    </div>
+    <div class="control-row"><span class="label">Момент</span><div id="moments" class="segment wrap"></div>
+      <label class="speed">36 часов за <select id="duration" aria-label="Скорость воспроизведения"><option value="45">45 с</option><option value="90" selected>90 с</option><option value="180">180 с</option></select></label>
+    </div>
+    <div class="control-row"><span class="label">Место</span><div id="places" class="segment wrap"></div></div>
+    <div class="control-row schedule"><span class="label">Сезон</span><label><span class="sr-only">Дата расчёта</span><input id="date" type="date" value="2026-10-24" min="2020-01-01" max="2040-12-31"></label>
+      <div class="segment" id="schedule"><button data-source="solar" aria-pressed="true">По солнцу</button><button data-source="fixed" aria-pressed="false">06:30–18:30</button></div>
+      <output id="sun-info"></output>
+    </div>
+    <div class="control-row"><span class="label">Солнце</span>
+      <label class="sun-sharpness" for="sun-sharpness"><span>Характер</span><span class="range-end">Атмосферное</span><input id="sun-sharpness" aria-label="Характер солнца: от атмосферного света до чёткого диска" aria-describedby="sun-style-hint" type="range" min="0" max="100" step="1" value="100"><span class="range-end">Чёткий диск</span><output id="sun-sharpness-value" for="sun-sharpness">100%</output></label>
+      <span id="sun-style-hint" class="sun-style-hint">Атмосферное: точка у горизонта, рассеянный свет в полдень.</span>
+    </div>
+  </section>
+  <section class="scenes" id="scenes" aria-label="Три темы новой вкладки"></section>
+  <footer class="notes">
+    <article><span>01 / СВЕТ</span><h2>Сначала воздух, потом солнце</h2><p>Сумерки зависят от высоты солнца: индиго, лиловый пояс, затем янтарная дымка. У горизонта диск теплее и чуть сплюснут, наверху — светлее и спокойнее.</p></article>
+    <article><span>02 / ГЛУБИНА</span><h2>Горизонт без линии</h2><p>На уровне поиска небо растворяется в матовой поверхности. Свет мягко рассеивается ниже, но солнце и звёзды остаются над горизонтом.</p></article>
+    <article><span>03 / ТИШИНА</span><h2>Ночь проявляется постепенно</h2><p>Первыми появляются яркие звёзды, затем слабые. Один звёздный каталог для трёх тем, медленное вращение и едва заметное мерцание. На паузе время замирает.</p></article>
+  </footer>
+  <div class="bottom"><span>Canvas 2D · без библиотек · без сетевых запросов</span><span id="render-info"></span></div>
+</main>
+</body>
+</html>

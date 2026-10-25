@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="ru" data-theme="dark" data-type="air">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Tabula · брендбук</title>
+  <link rel="icon" href="icons/icon32.png">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* The brand book page itself; everything it shows comes from tokens.css and style.css. */
+    body { background: var(--bg-grad); background-attachment: fixed; }
+    .book { width: min(980px, 100%); margin: 0 auto; padding: var(--s-8) var(--edge) var(--s-8); display: grid; gap: var(--s-8); }
+    .book-head { display: grid; gap: var(--s-4); }
+    .book-head h1 { margin: 0; font-family: var(--font-display); font-size: clamp(48px, 8vw, 96px); font-weight: var(--clock-weight); letter-spacing: var(--clock-track); line-height: 1; }
+    .book-head p { margin: 0; max-width: 60ch; color: var(--fg-2); font-size: var(--t-lead); line-height: 1.55; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; }
+    .chapter { display: grid; gap: var(--s-5); }
+    .chapter > header { display: grid; gap: var(--s-2); padding-bottom: var(--s-4); border-bottom: 1px solid var(--card-border); }
+    .chapter h2 { margin: 0; font-size: var(--t-title); font-weight: var(--title-weight); letter-spacing: -.02em; }
+    .chapter > header p, .rule { margin: 0; color: var(--fg-2); max-width: 68ch; line-height: 1.6; }
+    .rules { margin: 0; padding-left: 1.1em; display: grid; gap: var(--s-2); color: var(--fg-2); line-height: 1.55; }
+    .rules b { color: var(--fg); font-weight: var(--w-medium); }
+    .grid { display: grid; gap: var(--s-4); grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .panel { padding: var(--s-5); border: 1px solid var(--card-border); border-radius: var(--r-lg); background: var(--card); backdrop-filter: blur(22px) saturate(1.3); }
+    .token { font: var(--t-small)/1.4 ui-monospace, "SF Mono", Menlo, monospace; color: var(--fg-3); }
+    .token b { color: var(--fg); font-weight: var(--w-medium); }
+
+    /* frame diagram */
+    .frame-demo { position: relative; aspect-ratio: 16 / 9; border-radius: var(--r-lg); border: 1px solid var(--card-border); overflow: hidden;
+      background: linear-gradient(#2c3a5a, #6d6283 55%, #c99a8a); color: #eee9e3; container-type: inline-size; }
+    .fd-edge { position: absolute; inset: 4.5%; border: 1px dashed rgb(255 255 255 / .35); border-radius: var(--r-sm); }
+    .fd-corner { position: absolute; font-size: clamp(8px, 1.2cqi, 11px); letter-spacing: .14em; text-transform: uppercase; opacity: .85; }
+    .fd-tl { top: 6%; left: 6%; } .fd-tr { top: 6%; right: 6%; } .fd-bl { bottom: 6%; left: 6%; } .fd-br { bottom: 6%; right: 6%; }
+    .fd-top { position: absolute; left: 4.5%; right: 4.5%; top: 24%; border-top: 1px solid #ffcf6b; }
+    .fd-top span { position: absolute; right: 8px; top: -16px; font: 10px ui-monospace, monospace; color: #ffcf6b; }
+    .fd-cols { position: absolute; left: 4.5%; right: 4.5%; top: 24%; bottom: 14%; display: grid; grid-template-columns: 22% 1fr 22%; gap: 2.4%; }
+    .fd-cols > div { border-radius: var(--r-sm); background: rgb(255 255 255 / .08); border: 1px solid rgb(255 255 255 / .16); display: grid; align-content: start; justify-items: center; gap: 6%; padding-top: 3%; font-size: clamp(8px, 1.3cqi, 12px); }
+    .fd-cols i { display: block; width: 70%; height: 3px; border-radius: 2px; background: rgb(255 255 255 / .5); }
+    .fd-clock { font-family: var(--font-display); font-weight: 250; font-size: clamp(22px, 7cqi, 64px); letter-spacing: -.06em; line-height: 1; }
+
+    /* space and corners */
+    .space-row { display: grid; grid-template-columns: 64px 1fr 120px; align-items: center; gap: var(--s-4); }
+    .space-bar { height: 12px; border-radius: 3px; background: var(--accent); opacity: .8; }
+    .radius-box { height: 84px; border: 1px solid var(--fg-3); background: var(--hover); }
+    .nest { display: grid; place-items: center; height: 140px; padding: var(--s-4); border-radius: var(--r-lg); background: var(--card); border: 1px solid var(--card-border); }
+    .nest > div { width: 100%; height: 100%; border-radius: calc(var(--r-lg) - var(--s-4)); background: var(--hover); border: 1px dashed var(--fg-3); display: grid; place-items: center; }
+
+    /* type */
+    .type-row { display: grid; grid-template-columns: 150px 1fr; gap: var(--s-4); align-items: baseline; padding: var(--s-3) 0; border-bottom: 1px solid var(--card-border); }
+    .type-row:last-child { border-bottom: 0; }
+
+    /* colour */
+    .swatch { display: grid; gap: var(--s-2); }
+    .swatch > div { height: 72px; border-radius: var(--r-md); border: 1px solid var(--card-border); }
+
+    /* captions */
+    table { width: 100%; border-collapse: collapse; font-size: var(--t-body); }
+    th, td { text-align: left; padding: var(--s-3) var(--s-3) var(--s-3) 0; border-bottom: 1px solid var(--card-border); vertical-align: top; }
+    th { font-size: var(--t-micro); letter-spacing: var(--track-micro); text-transform: uppercase; color: var(--fg-3); font-weight: var(--w-strong); }
+    td:first-child { color: var(--fg-2); white-space: nowrap; }
+
+    .components { display: grid; gap: var(--s-5); grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); align-items: start; }
+    .components .panel { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }
+    .components .search { margin: 0; }
+    .components .btns { flex-wrap: wrap; }
+    .demo-tiles { display: flex; gap: var(--s-2); }
+    .demo-tiles .tile { width: 92px; }
+    @media (max-width: 640px) { .space-row { grid-template-columns: 48px 1fr; } .space-row .token:last-child { display: none; } .type-row { grid-template-columns: 1fr; gap: var(--s-1); } }
+  </style>
+</head>
+<body>
+  <main class="book">
+    <header class="book-head">
+      <span class="eyebrow">Tabula · микро-брендбук</span>
+      <h1>Немного места для дня</h1>
+      <p>Правила, по которым собирается домашний экран: кадр, отступы, скругления, шрифт, цвет и голос подписей.
+        Все значения на этой странице читаются прямо из <code>css/tokens.css</code>: поменяли токен — поменялся и экран, и брендбук.</p>
+      <div class="toolbar">
+        <div class="seg" id="themeSeg"><button type="button" data-v="light">Светлая</button><button type="button" data-v="dark">Тёмная</button></div>
+        <div class="seg" id="typeSeg"><button type="button" data-v="air">Воздушная</button><button type="button" data-v="classic">Классическая</button></div>
+        <a class="link" href="index.html">← к экрану</a>
+      </div>
+    </header>
+
+    <section class="chapter">
+      <header><h2>Принципы</h2></header>
+      <ul class="rules">
+        <li><b>Тишина вокруг главного.</b> В центре только время; всё остальное — мельче, тише и дальше от центра.</li>
+        <li><b>Баланс без перевеса.</b> Слева погода, справа задачи: одинаковая ширина колонок, общая верхняя линия, одинаковые подложки.</li>
+        <li><b>Небо — это фон, а не декор.</b> Текст на странице держит ореол (<code>--halo</code>), а не плашку; плашки — только у виджетов и по желанию.</li>
+        <li><b>Один шрифт, пять размеров.</b> Иерархию задают размер, начертание и регистр, а не новые гарнитуры и цвета.</li>
+        <li><b>Каждый отступ — из шкалы.</b> Никаких «13px потому что так легло».</li>
+      </ul>
+    </section>
+
+    <section class="chapter">
+      <header><h2>Кадр</h2><p>Экран — это рамка с отступом <code>--edge</code> от краёв окна, подписи в трёх углах (четвёртый — у кнопки настроек) и три колонки, которые начинаются на одной линии <code>--top</code>. Над часами только небо.</p></header>
+      <div class="frame-demo" aria-hidden="true">
+        <div class="fd-edge"></div>
+        <span class="fd-corner fd-tl">фраза</span><span class="fd-corner fd-tr">день года</span>
+        <span class="fd-corner fd-bl">⚙</span><span class="fd-corner fd-br">остаток дня ──</span>
+        <div class="fd-cols"><div>погода<i></i><i></i></div><div><span class="fd-clock">5:30</span><i></i><i style="width:50%"></i></div><div>задачи<i></i><i></i><i></i></div></div>
+        <div class="fd-top"><span>--top</span></div>
+      </div>
+      <ul class="rules">
+        <li><b>Углы:</b> слева вверху — фраза, справа вверху — день года, справа внизу — остаток дня, слева внизу — кнопка настроек. Обе строки высотой с кнопку (38 px) и в <code>--s-4</code> от края окна; подписи выровнены по краям карточек (<code>--edge</code>).</li>
+        <li><b>Колонки:</b> <code>--side</code> | центр | <code>--side</code>, между ними <code>--s-6</code>. Часы всегда в геометрическом центре окна.</li>
+        <li><b>Линия <code>--top</code></b> — общий старт: с неё начинаются карточка погоды, часы и карточка задач. Надзаголовков над колонками нет — названия живут в шапках карточек.</li>
+        <li><b>Уже 1100 px</b> — одна колонка: часы, закладки, погода, задачи; нижние подписи закрывают страницу.</li>
+      </ul>
+      <div class="grid" id="frameTokens"></div>
+    </section>
+
+    <section class="chapter">
+      <header><h2>Отступы</h2><p>Шаг 4 px. Внутри компонента — до <code>--s-4</code>, между компонентами — от <code>--s-5</code>.</p></header>
+      <div id="spaces" class="panel" style="display:grid;gap:var(--s-3)"></div>
+    </section>
+
+    <section class="chapter">
+      <header><h2>Скругления</h2><p>Пять ступеней и «таблетка». Чем крупнее и самостоятельнее поверхность, тем больше радиус.</p></header>
+      <div class="grid" id="radii"></div>
+      <div class="grid">
+        <div class="nest"><div class="token">внутри: <b>r-lg − s-4</b></div></div>
+        <p class="rule">Вложенное скругление = внешний радиус − внутренний отступ. Вложенный элемент никогда не скругляется сильнее родителя.</p>
+      </div>
+    </section>
+
+    <section class="chapter">
+      <header><h2>Типографика</h2><p>Системный шрифт (SF Pro / Segoe UI Variable / Inter). Пресет «Воздушная» — тонкие крупные цифры и разреженные подписи капсом; «Классическая» — прежний вид.</p></header>
+      <div class="panel" id="types"></div>
+      <ul class="rules">
+        <li><b>Цифры</b> везде табличные (<code>tabular-nums</code>), чтобы время и температура не прыгали.</li>
+        <li><b>Секунды и AM/PM</b> висят справа от часов и не участвуют в центровке; сами часы выровнены оптически — хвостовой трекинг возвращён справа.</li>
+        <li><b>Дата</b> стоит под часами через <code>--s-5</code>; неделя отделена волосяной линией, а не плашкой.</li>
+      </ul>
+    </section>
+
+    <section class="chapter">
+      <header><h2>Цвет</h2><p>Три уровня «чернил» подобраны под небо, а не под белый лист. Акцент тёплый — цвета солнца на дуге.</p></header>
+      <div class="grid" id="colors"></div>
+      <div class="panel" style="display:grid;gap:var(--s-3)">
+        <span class="eyebrow">Солнце</span>
+        <div style="height:12px;border-radius:var(--r-pill);background:linear-gradient(90deg,#ff9a5c,#ffcf6b,#ff9a5c)"></div>
+        <span class="token">#ff9a5c → #ffcf6b → #ff9a5c · диск #ffc65c · только для солнца и дуги</span>
+      </div>
+    </section>
+
+    <section class="chapter">
+      <header><h2>Подписи</h2><p>Голос Tabula — тихий собеседник. Подписи помогают почувствовать время, а не управляют вниманием.</p></header>
+      <ul class="rules">
+        <li><b>Коротко:</b> 2–6 слов, без восклицательных знаков и эмодзи.</li>
+        <li><b>Тепло, но без сиропа:</b> «Чтобы начать, достаточно маленького шага», а не «Порви этот день!».</li>
+        <li><b>Полезное — справа</b> (день года, остаток дня), настроение — слева вверху: фраза случайно выбирается при открытии вкладки и сменяется раз в 15 минут, с мягким затуханием. Над часами ничего: время говорит само.</li>
+        <li><b>Угловые подписи</b> — строчными, <code>--t-small</code>, цвет <code>--fg-3</code>. Микро-капс с трекингом <code>--track-micro</code> — для служебных заголовков внутри панелей и окон.</li>
+        <li><b>Отключаемы:</b> «Настройки → Вид → Подписи по краям» прячет их, не сдвигая сетку.</li>
+      </ul>
+      <div class="panel" style="overflow-x:auto"><table id="caps"></table></div>
+    </section>
+
+    <section class="chapter">
+      <header><h2>Карточки</h2><p>Погода и задачи — одна и та же карточка, поэтому они читаются как пара.</p></header>
+      <ul class="rules">
+        <li><b>Поля карточки</b> — <code>--s-4</code> сверху и снизу, <code>--s-3</code> по бокам; строки внутри отступают ещё на 10 px (место для подсветки при наведении). Текст начинается в 22–23 px от края.</li>
+        <li><b>Шапка</b> — заголовок <code>--t-title</code> слева (<i>Сегодня</i>, <i>За вашим окном</i>), справа короткое число <code>--t-small</code> (<i>0/1</i>, <i>↑14° ↓7°</i>).</li>
+        <li><b>Высота по содержимому.</b> Разделитель снизу появляется, только когда под ним что-то есть (история задач).</li>
+        <li><b>Подложка</b> одинаковая у обеих и включается вместе («Настройки → Вид → Подложки у виджетов»).</li>
+      </ul>
+    </section>
+
+    <section class="chapter">
+      <header><h2>Компоненты</h2><p>Живые элементы из <code>style.css</code>.</p></header>
+      <div class="components">
+        <div class="panel"><span class="eyebrow">Виджет погоды</span><button class="weather" type="button" id="demoWx"></button></div>
+        <div class="panel"><span class="eyebrow">Поиск</span>
+          <form class="search" onsubmit="return false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><input type="search" placeholder="Поиск или адрес сайта"><kbd>↵</kbd></form>
+          <span class="eyebrow">Кнопки и переключатели</span>
+          <div class="btns"><button class="btn" type="button">Обычная</button><button class="btn ghost" type="button">Прозрачная</button><button class="btn primary" type="button">Главная</button></div>
+          <div class="row"><span>Переключатель</span><input type="checkbox" class="switch" checked></div>
+          <div class="seg wide"><button type="button" aria-pressed="true">Один</button><button type="button">Два</button><button type="button">Три</button></div>
+        </div>
+        <div class="panel"><span class="eyebrow">Закладки</span>
+          <div class="demo-tiles">
+            <a class="tile" href="#"><span class="tile-icon" style="font-size:28px">🌿</span><span class="tile-label">Эмодзи</span></a>
+            <a class="tile" href="#"><span class="tile-icon letter" style="--hue:24">T</span><span class="tile-label">Буква</span></a>
+            <span class="tile add"><span class="tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><span class="tile-label">Добавить</span></span>
+          </div>
+          <p class="rule">Иконка 56 px, радиус <code>--r-md</code>; подпись <code>--t-small</code>, одна строка.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter">
+      <header><h2>Движение</h2></header>
+      <ul class="rules">
+        <li><b>--t-fast 0.15 s</b> — наведение, цвет, прозрачность.</li>
+        <li><b>--t-base 0.25 s</b> — появление панелей и подложек.</li>
+        <li><b>--t-slow 0.6 s</b> — смена неба и темы.</li>
+        <li><b>Кривая</b> <code>--ease</code> одна на всё; при «уменьшить движение» анимации выключаются.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script type="module">
+    import { setLang, t } from './js/i18n.js';
+    setLang('ru');
+    const root = document.documentElement, css = getComputedStyle(root);
+    const v = name => css.getPropertyValue(name).trim();
+    const el = (tag, attrs = {}, html = '') => Object.assign(document.createElement(tag), attrs, html ? { innerHTML: html } : {});
+
+    // Light/dark and typography switches, so every token can be seen in both looks.
+    const seg = (id, apply) => {
+      const box = document.getElementById(id);
+      const sync = () => box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === apply())));
+      box.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; apply(b.dataset.v); sync(); render(); });
+      sync();
+    };
+    seg('themeSeg', x => (x ? (root.dataset.theme = x) : root.dataset.theme));
+    seg('typeSeg', x => (x ? (root.dataset.type = x) : root.dataset.type));
+    if (matchMedia('(prefers-color-scheme: light)').matches) document.querySelector('#themeSeg [data-v=light]').click();
+
+    function render() {
+      const c = getComputedStyle(root), val = n => c.getPropertyValue(n).trim();
+
+      const frame = document.getElementById('frameTokens');
+      frame.replaceChildren(...[['--edge', 'поля окна и угловых подписей'], ['--top', 'общая верхняя линия колонок'], ['--side', 'ширина колонок погоды и задач'], ['--center', 'ширина поиска']]
+        .map(([n, d]) => el('div', { className: 'panel' }, `<div class="token"><b>${n}</b></div><div class="token">${val(n)}</div><p class="rule" style="margin-top:8px">${d}</p>`)));
+
+      const spaces = document.getElementById('spaces');
+      spaces.replaceChildren(...[1, 2, 3, 4, 5, 6, 7, 8].map(i => {
+        const row = el('div', { className: 'space-row' }, `<span class="token"><b>s-${i}</b></span><div><div class="space-bar" style="width:var(--s-${i})"></div></div><span class="token">${val('--s-' + i)}</span>`);
+        return row;
+      }));
+
+      const radii = document.getElementById('radii');
+      radii.replaceChildren(...[['xs', 'чекбокс, чип внутри контрола'], ['sm', 'кнопка, поле, строка списка'], ['md', 'иконка закладки, плитка, карточка темы'], ['lg', 'виджет: погода, задачи'], ['xl', 'панель настроек, окна'], ['pill', 'поиск, чипы, переключатели']]
+        .map(([n, d]) => el('div', {}, `<div class="radius-box" style="border-radius:var(--r-${n})"></div><div class="token" style="margin-top:8px"><b>r-${n}</b> · ${val('--r-' + n)}</div><p class="rule" style="font-size:var(--t-small)">${d}</p>`)));
+
+      const types = document.getElementById('types');
+      types.replaceChildren(...[
+        ['clock', `<span class="clock" style="font-size:min(var(--clock-size),120px)">5:30</span>`, `${val('--clock-size')} · ${val('--clock-weight')}`],
+        ['title 22', `<span style="font-size:var(--t-title);font-weight:var(--title-weight);letter-spacing:-.02em">Сегодня</span>`, 'заголовок виджета, панели'],
+        ['lead 16', `<span style="font-size:var(--t-lead);font-weight:var(--w-medium)">Пасмурно, 13°</span>`, 'акцентная строка'],
+        ['body 14', `<span style="font-size:var(--t-body)">Воскресенье, 25 октября · текст задач и настроек</span>`, 'основной текст'],
+        ['small 12', `<span style="font-size:var(--t-small);color:var(--fg-2)">Berlin · ↑14° ↓7° · подписи закладок</span>`, 'вспомогательный'],
+        ['micro 11', `<span class="eyebrow">За вашим окном</span>`, `капс, трекинг ${val('--track-micro')}`],
+      ].map(([n, s, d]) => el('div', { className: 'type-row' }, `<span class="token"><b>${n}</b><br>${d}</span><div>${s}</div>`)));
+
+      const colors = document.getElementById('colors');
+      colors.replaceChildren(...[['--fg', 'основной текст'], ['--fg-2', 'вторичный, подписи'], ['--fg-3', 'третичный, подсказки'], ['--accent', 'акцент, выбор, фокус'], ['--card', 'подложка виджета'], ['--card-border', 'граница, волосяные линии']]
+        .map(([n, d]) => el('div', { className: 'swatch' }, `<div style="background:var(${n})"></div><span class="token"><b>${n}</b> · ${val(n)}</span><span class="rule" style="font-size:var(--t-small)">${d}</span>`)));
+
+      const caps = document.getElementById('caps');
+      caps.innerHTML = '<tr><th>Где</th><th>Подпись</th><th>Что делает</th></tr>' + [
+        ['Заголовок виджета погоды', t('outside'), 'как «Сегодня» у задач; справа ↑макс ↓мин на месте счётчика'],
+        ['Левый верхний угол', [t('motto'), t('focusNote')].join(' / '), 'одна из фраз, случайно'],
+        ['Правый верхний угол', t('dayOf', { n: 298, y: 365 }), 'день года'],
+        ['Правый нижний угол', t('dayLeft', { n: 27 }), 'остаток дня с тонкой шкалой'],
+      ].map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td style="color:var(--fg-3)">${r[2]}</td></tr>`).join('');
+
+      // A sample of the weather widget.
+      document.getElementById('demoWx').innerHTML = `<span class="wx-head-row"><span class="wx-title">${t('outside')}</span><span class="tcount">↑14° ↓7°</span></span><span class="wx-now"><span class="wx-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 9.5a4.25 4.25 0 0 1 0 8.5z"/></svg></span><span class="wx-temp">13°</span><span class="wx-meta"><span class="wx-desc">Пасмурно</span><span class="wx-sub">Berlin</span></span></span>`
+        + `<span class="wx-sun"><span>${t('sunrise', { t: '06:48' })}</span><span>${t('sunset', { t: '16:51' })}</span></span>`;
+    }
+    render();
+  </script>
+</body>
+</html>

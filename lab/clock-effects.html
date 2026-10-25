@@ -1,0 +1,1434 @@
+<meta charset="utf-8">
+<title>Погодные часы</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a control strip, concept tabs, then a two-column wall of live clock scenes (one per weather). */
+:root {
+  --bg: #f4f3ef;
+  --panel: #ffffff;
+  --fg: #1c1e23;
+  --muted: #626774;
+  --line: rgba(25, 25, 35, .1);
+  --accent: #3f5bd6;
+  --accent-ink: #ffffff;
+  --scene-a: #ffffff;
+  --scene-b: #ebe7df;
+  --clock-fg: #1c1e23;
+  --clock-bg: #f1eee8;
+  --is-dark: 0;
+  --ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b0d11; --panel: #14171d; --fg: #eceef2; --muted: #9aa0ab; --line: rgba(255, 255, 255, .09);
+    --accent: #93a4ff; --accent-ink: #0b0d11; --scene-a: #1d2230; --scene-b: #0f1116;
+    --clock-fg: #eceef2; --clock-bg: #0f1116; --is-dark: 1; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b0d11; --panel: #14171d; --fg: #eceef2; --muted: #9aa0ab; --line: rgba(255, 255, 255, .09);
+  --accent: #93a4ff; --accent-ink: #0b0d11; --scene-a: #1d2230; --scene-b: #0f1116;
+  --clock-fg: #eceef2; --clock-bg: #0f1116; --is-dark: 1; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.5 var(--ui);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 22px; }
+header.top { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+h1 { margin: 0; font: 600 30px/1.1 var(--display); letter-spacing: -.02em; text-wrap: balance; }
+.lede { margin: 8px 0 0; color: var(--muted); max-width: 64ch; }
+.controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto auto;
+  gap: 14px 22px;
+  align-items: end;
+  padding: 14px 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.ctl { display: grid; gap: 6px; min-width: 0; }
+.ctl label, .ctl .lbl { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.ctl output { font: 12.5px var(--mono); color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+.seg { display: inline-flex; padding: 3px; border-radius: 9px; background: color-mix(in srgb, var(--fg) 6%, transparent); }
+.seg button, .btn {
+  font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0; border-radius: 7px; padding: 5px 11px; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--panel); color: var(--fg); box-shadow: 0 1px 3px rgba(0, 0, 0, .15); }
+.btn { border: 1px solid var(--line); color: var(--fg); background: var(--panel); white-space: nowrap; }
+.btn:hover { background: color-mix(in srgb, var(--fg) 6%, var(--panel)); }
+.btn.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.minute { display: flex; gap: 8px; align-items: center; }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.check input { accent-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.tab {
+  font: 500 14px var(--ui); color: var(--muted); background: none; border: 1px solid transparent; border-radius: 999px; padding: 7px 14px; cursor: pointer;
+}
+.tab:hover { color: var(--fg); }
+.tab[aria-selected="true"] { color: var(--fg); border-color: var(--line); background: var(--panel); }
+.tab .n { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-right: 6px; }
+.concept { margin: 0; max-width: 78ch; color: var(--muted); }
+.concept b { color: var(--fg); font-weight: 600; }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.card { display: grid; gap: 10px; min-width: 0; }
+.card.wide { grid-column: 1 / -1; }
+.scene {
+  position: relative;
+  aspect-ratio: 16 / 8.6;
+  max-width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: radial-gradient(120% 95% at 22% 8%, var(--scene-a), var(--scene-b));
+  border: 1px solid var(--line);
+}
+.card.wide .scene { aspect-ratio: 16 / 7; }
+.scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.expand {
+  position: absolute; top: 10px; right: 10px; font: 12px var(--ui); color: var(--muted);
+  background: color-mix(in srgb, var(--panel) 80%, transparent); border: 1px solid var(--line); border-radius: 8px; padding: 3px 9px; cursor: pointer;
+  opacity: 0; transition: opacity .15s;
+}
+.scene:hover .expand, .expand:focus-visible { opacity: 1; }
+.meta { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 0 4px; }
+.meta h3 { margin: 0; font: 600 15px var(--display); }
+.meta .code { font: 11.5px var(--mono); color: var(--muted); align-self: center; white-space: nowrap; }
+.meta p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13.5px; }
+.note { color: var(--muted); font-size: 12.5px; margin: 0; }
+
+@media (max-width: 1000px) {
+  header.top { grid-template-columns: 1fr; }
+  .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .grid { grid-template-columns: 1fr; }
+  .controls { grid-template-columns: 1fr; }
+  h1 { font-size: 24px; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Погодные часы</h1>
+      <p class="lede">Черновики эффектов для часов Tabula. Каждая карточка — живая сцена со своей погодой. Минута сама меняется каждые 5 секунд, чтобы было видно переходы. Наведите на сцену, чтобы развернуть её крупнее.</p>
+    </div>
+    <div class="seg" id="theme" role="group" aria-label="Тема">
+      <button type="button" data-v="auto">Авто</button>
+      <button type="button" data-v="light">Светлая</button>
+      <button type="button" data-v="dark">Тёмная</button>
+    </div>
+  </header>
+
+  <section class="controls" aria-label="Параметры погоды">
+    <div class="ctl"><label for="hour">Время суток</label><input id="hour" type="range" min="0" max="24" step="0.25"><output id="hourOut"></output></div>
+    <div class="ctl"><label for="inten">Осадки</label><input id="inten" type="range" min="0" max="1" step="0.05" value="0.55"><output id="intenOut"></output></div>
+    <div class="ctl"><label for="wind">Ветер</label><input id="wind" type="range" min="-1" max="1" step="0.05" value="0.25"><output id="windOut"></output></div>
+    <div class="ctl"><span class="lbl">Смена минуты</span>
+      <div class="minute"><button type="button" class="btn" id="tick">+1 минута</button><label class="check"><input type="checkbox" id="auto" checked>каждые 5 с</label></div>
+    </div>
+    <div class="ctl"><span class="lbl">Цифры</span>
+      <div class="seg" id="weight" role="group" aria-label="Толщина цифр">
+        <button type="button" data-v="300">Тонкие</button>
+        <button type="button" data-v="500">Средние</button>
+        <button type="button" data-v="700">Жирные</button>
+      </div>
+    </div>
+    <div class="ctl"><span class="lbl">Анимация</span><button type="button" class="btn" id="pause">Пауза</button></div>
+  </section>
+
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+  <p class="concept" id="conceptDesc"></p>
+  <main class="grid" id="grid"></main>
+  <p class="note" id="rm" hidden>В системе включено «уменьшение движения», поэтому анимация на паузе. Нажмите «Продолжить», чтобы посмотреть эффекты.</p>
+</div>
+
+<script>
+'use strict';
+/* ================= data ================= */
+const CONCEPTS = [
+  { id: 'shadow', n: '1', title: 'Свет и тень', flags: { shadow: 1 },
+    desc: '<b>Цифры неподвижны.</b> Солнце, посчитанное по времени суток, отбрасывает от них тень: длинную и тёплую утром и вечером, короткую днём, размытую в облачность. Ночью тени нет, вместо неё холодное свечение, яркость которого зависит от фазы луны. Двигайте ползунок «Время суток».' },
+  { id: 'minute', n: '2', title: 'Смена минуты', flags: { trans: 1 },
+    desc: '<b>Между сменами часы полностью статичны.</b> Погода проявляется только в момент, когда меняется цифра, и только у меняющихся цифр. Анимация длится секунду-полторы.' },
+  { id: 'particles', n: '3', title: 'Частицы', flags: { particles: 1 },
+    desc: '<b>Немного частиц вокруг часов, и они знают форму цифр.</b> Капли разбиваются о верхние грани и стекают по цифрам, снег копится шапками и осыпается со сменившейся цифры, ночью за цифрами пролетает метеор.' },
+  { id: 'material', n: '4', title: 'Материал', flags: { material: 1 },
+    desc: '<b>Погода внутри цифр.</b> Мокрое стекло с каплями, иней, растущий от краёв, дымка, ночное небо со звёздами. Снаружи ничего не двигается.' },
+  { id: 'combo', n: '★', title: 'Комбо 1 + 2 + 3', flags: { shadow: 1, trans: 1, particles: 1, lite: 1 },
+    desc: '<b>То, что я рекомендую для расширения:</b> тень от солнца как постоянный фон, погодная смена минуты и частицы с половинной плотностью.' },
+];
+
+const WEATHERS = [
+  { k: 'sun', name: 'Ясно', code: 'WMO 0–1',
+    d: { shadow: 'Чёткая тень, к вечеру длиннее и теплее, на цифрах тёплый край со стороны солнца.', minute: 'Цифра сгорает в тёплой вспышке, новая проявляется из засветки.', particles: 'Косой луч и редкие пылинки в нём.', material: 'Матовый металл с мягким светом со стороны солнца.' } },
+  { k: 'partly', name: 'Переменная облачность', code: 'WMO 2',
+    d: { shadow: 'Тень то появляется, то пропадает, когда облако закрывает солнце.', minute: 'Тёплая вспышка, но мягче, чем в ясную погоду.', particles: 'Луч солнца гаснет и возвращается, за цифрами плывут облака.', material: 'Свет на металле то есть, то нет.' } },
+  { k: 'cloudy', name: 'Пасмурно', code: 'WMO 3',
+    d: { shadow: 'Короткая, сильно размытая тень, свет рассеянный.', minute: 'Спокойная смена: цифра уходит вниз, новая опускается сверху.', particles: 'За цифрами медленно плывут слои облаков.', material: 'Внутри цифр едва заметно движутся светлые и тёмные пятна.' } },
+  { k: 'fog', name: 'Туман', code: 'WMO 45, 48',
+    d: { shadow: 'Тени нет, цифры теряют контраст и чуть размыты.', minute: 'Старая цифра растворяется в дымке, новая из неё проступает.', particles: 'Полосы тумана проходят перед цифрами.', material: 'Внутри цифр течёт дымка.' } },
+  { k: 'drizzle', name: 'Морось', code: 'WMO 51–57',
+    d: { shadow: 'Рассеянная, почти невидимая тень.', minute: 'Цифра медленно стекает, новая прорисовывается, как по мокрому стеклу.', particles: 'Мелкая морось, на цифрах выступает конденсат и иногда скатывается.', material: 'Запотевшее стекло с мелкими каплями.' } },
+  { k: 'rain', name: 'Дождь', code: 'WMO 61–67, 80–82',
+    d: { shadow: 'Рассеянная тень. Наклон дождя в частицах зависит от ветра.', minute: 'Старая цифра стекает каплями, новая проявляется сверху вниз.', particles: 'Капли разбиваются о верхние грани, часть стекает по цифрам.', material: 'Мокрое стекло: капли замирают и рывком сползают, оставляя след.' } },
+  { k: 'storm', name: 'Гроза', code: 'WMO 95–99',
+    d: { shadow: 'Тени нет, но вспышка молнии на миг бросает резкую тень.', minute: 'Вспышка, новая цифра загорается с мерцанием.', particles: 'Ливень с ветром, вспышки подсвечивают цифры сзади, за ними видна молния.', material: 'Внутри цифр клубятся тучи и проскакивает молния.' } },
+  { k: 'snow', name: 'Снег', code: 'WMO 71–77, 85–86',
+    d: { shadow: 'Мягкая холодная тень, как от снежного света.', minute: 'Цифра рассыпается снежинками, новая собирается из них.', particles: 'На гранях цифр копятся снежные шапки и осыпаются со сменившейся цифры.', material: 'От краёв цифр нарастает иней.' } },
+  { k: 'wind', name: 'Ветер', code: 'wind_speed_10m > 8 м/с',
+    d: { shadow: 'Тень как в ясную погоду, ветер здесь виден только в смене минуты.', minute: 'Цифру сдувает по направлению ветра, новая прилетает с другой стороны.', particles: 'Редкие порывы и пролетающие листья.', material: 'Внутри цифр бегут тонкие струи.' } },
+  { k: 'night', name: 'Ясная ночь', code: 'WMO 0–1, is_day = 0',
+    d: { shadow: 'Холодное свечение вокруг цифр, сила зависит от фазы луны.', minute: 'Цифра рассыпается искрами-звёздами, новая разгорается.', particles: 'За цифрами мерцают звёзды, иногда пролетает метеор, двоеточие дышит.', material: 'Цифры как окна в ночное небо со звёздами.' } },
+];
+
+/* ================= state ================= */
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+const FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const nowD = new Date();
+const S = {
+  concept: 'combo',
+  hour: (nowD.getHours() >= 7 && nowD.getHours() <= 19) ? nowD.getHours() + Math.round(nowD.getMinutes() / 15) / 4 : 16.5,
+  intensity: .55,
+  wind: .25,
+  auto: true,
+  paused: false,
+  weight: '300',
+  h: nowD.getHours(),
+  m: nowD.getMinutes(),
+};
+const flags = () => CONCEPTS.find(c => c.id === S.concept).flags;
+const clockText = () => `${String(S.h).padStart(2, '0')}:${String(S.m).padStart(2, '0')}`;
+
+/* ================= helpers ================= */
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => 1 - Math.pow(1 - t, 3);
+const easeIn = t => t * t;
+const rand = (a = 1, b) => (b === undefined ? Math.random() * a : a + Math.random() * (b - a));
+const now = () => performance.now() / 1000;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+
+const PERM = new Uint8Array(512);
+{ const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) PERM[i] = p[i & 255]; }
+const GRAD = Float32Array.from({ length: 256 }, () => Math.random());
+function noise2(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const h = (a, b) => GRAD[PERM[(PERM[a & 255] + b) & 255]];
+  return lerp(lerp(h(xi, yi), h(xi + 1, yi), u), lerp(h(xi, yi + 1), h(xi + 1, yi + 1), u), v);
+}
+const noise1 = x => noise2(x, 0.37);
+
+// Simple solar model: daylight 06:00–20:00, max elevation 58°. a = -1 sunrise (east, left) … 1 sunset (west, right).
+function sunState(hr) {
+  const t = (hr - 6) / 14;
+  if (t <= 0 || t >= 1) return { up: false, elev: -10, a: hr < 12 ? -1 : 1 };
+  return { up: true, elev: Math.sin(Math.PI * t) * 58, a: t * 2 - 1 };
+}
+// Fraction of the moon that is lit today (0 new … 1 full).
+function moonIllum() {
+  const syn = 29.530588853, ref = Date.UTC(2000, 0, 6, 18, 14) / 864e5;
+  const age = (((Date.now() / 864e5 - ref) % syn) + syn) % syn;
+  return (1 - Math.cos(2 * Math.PI * age / syn)) / 2;
+}
+const cloudPass = (t, seed) => 0.08 + 0.92 * smooth(0.38, 0.62, noise1(t * 0.09 + seed));
+
+function themeColors() {
+  const cs = getComputedStyle(document.documentElement);
+  const dark = cs.getPropertyValue('--is-dark').trim() === '1';
+  const fg = cs.getPropertyValue('--clock-fg').trim(), bg = cs.getPropertyValue('--clock-bg').trim();
+  return dark ? {
+    dark, fg, bg, hl: 'rgba(12,14,20,0.55)', hlSoft: 'rgba(12,14,20,', rain: '185,205,240', snowAir: 'rgba(238,242,250,0.85)',
+    snowCap: '#ffffff', capEdge: 'rgba(0,0,0,0.4)', star: 'rgba(255,255,255,', warm: '#ffc27a', mote: '255,207,138',
+    cloud: '150,160,178', fog: 'rgba(120,128,142,', streak: 'rgba(220,226,235,', leaf: '#c9a46a', frost: 'rgba(80,125,200,0.95)',
+    tint: '0,0,0', glow: '160,180,255',
+  } : {
+    dark, fg, bg, hl: 'rgba(255,255,255,0.8)', hlSoft: 'rgba(255,255,255,', rain: '70,95,140', snowAir: 'rgba(120,138,165,0.75)',
+    snowCap: '#ffffff', capEdge: 'rgba(70,90,120,0.4)', star: 'rgba(70,78,160,', warm: '#ff8a3d', mote: '190,128,40',
+    cloud: '120,126,138', fog: 'rgba(241,238,232,', streak: 'rgba(60,66,82,', leaf: '#b07a32', frost: 'rgba(236,246,255,0.9)',
+    tint: '255,255,255', glow: '80,90,180',
+  };
+}
+
+function boltPath(x0, y0, x1, y1, jag) {
+  let pts = [[x0, y0], [x1, y1]];
+  for (let k = 0; k < 5; k++) {
+    const next = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
+      next.push(pts[i], [(ax + bx) / 2 + rand(-jag, jag), (ay + by) / 2 + rand(-jag * .3, jag * .3)]);
+    }
+    next.push(pts[pts.length - 1]);
+    pts = next;
+    jag *= 0.55;
+  }
+  return pts;
+}
+function strokePts(c, pts) { c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.stroke(); }
+
+/* ================= scene ================= */
+class Scene {
+  constructor(wx, el) {
+    this.wx = wx;
+    this.el = el;
+    this.canvas = el.querySelector('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.layer = document.createElement('canvas');
+    this.lctx = this.layer.getContext('2d');
+    this.shadow = document.createElement('canvas');
+    this.sctx = this.shadow.getContext('2d');
+    this.tmp = document.createElement('canvas');
+    this.tctx = this.tmp.getContext('2d');
+    this.text = clockText();
+    this.trans = [];
+    this.visible = true;
+    this.seed = rand(100);
+    this.layout();
+  }
+
+  get lite() { return flags().lite ? 0.5 : 1; }
+
+  layout() {
+    const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
+    if (!w || !h) return;
+    this.w = w; this.h = h;
+    for (const c of [this.canvas, this.layer, this.shadow, this.tmp]) { c.width = Math.round(w * DPR); c.height = Math.round(h * DPR); }
+    this.colors = themeColors();
+    this.fs = Math.min(h * 0.44, w * 0.23);
+    this.font = `${S.weight} ${this.fs}px ${FONT}`;
+    const m = this.ctx;
+    m.font = this.font;
+    let dw = 0;
+    for (const d of '0123456789') dw = Math.max(dw, m.measureText(d).width);
+    const track = -0.035 * this.fs;
+    const cw = ch => (ch === ':' ? m.measureText(':').width + this.fs * 0.05 : dw);
+    const total = [...this.text].reduce((s, ch) => s + cw(ch) + track, -track);
+    let x = (w - total) / 2;
+    this.cells = [...this.text].map(ch => { const c = { x, w: cw(ch) }; x += cw(ch) + track; return c; });
+    this.base = h * 0.5 + this.fs * 0.36;
+    this.pad = Math.ceil(this.fs * 0.12);
+    this.sw = Math.ceil(dw + this.pad * 2);
+    this.sh = Math.ceil(this.fs * 1.15);
+    this.sy = this.base - this.fs * 0.95;
+    this.cache = new Map();
+    this.ptsCache = new Map();
+    this.shKey = '';
+    this.buildMask();
+    this.resetSystems();
+  }
+
+  resetSystems() {
+    this.trans = [];
+    this.parts = makeParticles(this);
+    this.mat = makeMaterial(this);
+  }
+
+  cellX(i) { return this.cells[i].x + this.cells[i].w / 2 - this.sw / 2; }
+
+  sprite(ch, color, scale = DPR) {
+    const key = ch + color + scale;
+    let c = this.cache.get(key);
+    if (c) return c;
+    c = document.createElement('canvas');
+    c.width = Math.ceil(this.sw * scale);
+    c.height = Math.ceil(this.sh * scale);
+    const x = c.getContext('2d');
+    x.scale(scale, scale);
+    x.font = this.font;
+    x.textAlign = 'center';
+    x.fillStyle = color;
+    x.fillText(ch, this.sw / 2, this.fs * 0.95);
+    this.cache.set(key, c);
+    return c;
+  }
+
+  // Points inside a glyph, relative to its sprite origin.
+  charPts(ch, step) {
+    const key = ch + step;
+    if (this.ptsCache.has(key)) return this.ptsCache.get(key);
+    const sp = this.sprite(ch, '#000', 1);
+    const d = sp.getContext('2d').getImageData(0, 0, sp.width, sp.height).data;
+    const pts = [];
+    for (let y = 0; y < sp.height; y += step) for (let x = 0; x < sp.width; x += step) if (d[(Math.floor(y) * sp.width + Math.floor(x)) * 4 + 3] > 120) pts.push([x, y]);
+    this.ptsCache.set(key, pts);
+    return pts;
+  }
+
+  buildMask() {
+    const mc = document.createElement('canvas');
+    mc.width = this.w; mc.height = this.h;
+    const x = mc.getContext('2d', { willReadFrequently: true });
+    [...this.text].forEach((ch, i) => x.drawImage(this.sprite(ch, '#000', 1), this.cellX(i), this.sy));
+    const d = x.getImageData(0, 0, this.w, this.h).data;
+    const w = this.w, h = this.h;
+    this.mask = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) this.mask[i] = d[i * 4 + 3] > 110 ? 1 : 0;
+    this.pts = []; this.edge = [];
+    let x0 = w, y0 = h, x1 = 0, y1 = 0;
+    for (let y = 1; y < h - 1; y += 2) for (let xx = 1; xx < w - 1; xx += 2) {
+      if (!this.mask[y * w + xx]) continue;
+      this.pts.push([xx, y]);
+      if (!this.mask[(y - 2) * w + xx] || !this.mask[(y + 2) * w + xx] || !this.mask[y * w + xx - 2] || !this.mask[y * w + xx + 2]) this.edge.push([xx, y]);
+      x0 = Math.min(x0, xx); y0 = Math.min(y0, y); x1 = Math.max(x1, xx); y1 = Math.max(y1, y);
+    }
+    this.bbox = { x0, y0, x1, y1 };
+    const ci = this.text.indexOf(':');
+    this.colonDots = [];
+    if (ci >= 0) {
+      const cx = Math.round(this.cells[ci].x + this.cells[ci].w / 2);
+      let run = null;
+      for (let y = 0; y < h; y++) {
+        const on = this.inMask(cx, y);
+        if (on && !run) run = y;
+        if (!on && run !== null) { this.colonDots.push({ x: cx, y: (run + y) / 2, r: (y - run) / 2 }); run = null; }
+      }
+    }
+  }
+
+  inMask(x, y) {
+    x |= 0; y |= 0;
+    return x >= 0 && y >= 0 && x < this.w && y < this.h && this.mask[y * this.w + x] === 1;
+  }
+
+  setText(nt, animate) {
+    if (!this.w) { this.text = nt; return; }
+    const old = this.text;
+    const changed = [];
+    for (let i = 0; i < nt.length; i++) if (nt[i] !== old[i]) changed.push(i);
+    if (!changed.length) return;
+    this.text = nt;
+    if (animate) for (const i of changed) this.trans[i] = makeTransition(this, old[i], nt[i]);
+    this.buildMask();
+    this.parts?.onText?.(changed);
+    this.mat?.onText?.(changed);
+  }
+
+  // Storm lightning: 0…1 flicker envelope, shared by every concept.
+  lightning(t) {
+    if (this.wx.k !== 'storm') return 0;
+    if (!this.nb) this.nb = t + rand(1.5, 4);
+    if (t > this.nb) {
+      this.bt = t;
+      this.nb = t + rand(6, 11);
+      const x = rand(this.w * .2, this.w * .8);
+      this.bolt = boltPath(x, -5, x + rand(-60, 60), this.h * rand(.55, .9), 40);
+      const b = this.bbox;
+      const ix = rand(b.x0, b.x1);
+      this.innerBolt = boltPath(ix, b.y0 - 4, ix + rand(-30, 30), b.y1 + 4, 14);
+    }
+    if (this.bt == null) return 0;
+    const d = t - this.bt;
+    if (d > 0.45) return 0;
+    return d < .07 ? 1 : d < .13 ? .15 : d < .22 ? .85 : Math.max(0, 1 - (d - .22) / .23);
+  }
+
+  frame(t, dt) {
+    if (!this.w) return;
+    const c = this.ctx, F = flags();
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.clearRect(0, 0, this.w, this.h);
+    this.drawDigits(t);
+    if (F.material) this.mat?.draw?.(this.lctx, t, dt);
+    if (F.shadow) this.goldenHour(this.lctx, t);
+    if (F.particles) this.parts?.back?.(c, t, dt);
+    if (F.shadow) this.drawShadow(c, t);
+    this.composite(c, t, F);
+    if (F.particles) this.parts?.front?.(c, t, dt);
+    this.drawFlash(c, t, F);
+  }
+
+  drawDigits(t) {
+    const L = this.lctx, fg = this.colors.fg;
+    L.setTransform(DPR, 0, 0, DPR, 0, 0);
+    L.clearRect(0, 0, this.w, this.h);
+    [...this.text].forEach((ch, i) => {
+      const x = this.cellX(i), y = this.sy, tr = this.trans[i];
+      if (tr) {
+        const p = clamp((t - tr.t0) / tr.dur);
+        if (p >= 1) this.trans[i] = null;
+        else { L.save(); tr.draw(L, p, x, y, t); L.restore(); return; }
+      }
+      L.drawImage(this.sprite(ch, fg), x, y, this.sw, this.sh);
+    });
+  }
+
+  shadowParams(t) {
+    const k = this.wx.k, dark = this.colors.dark, fs = this.fs;
+    if (k === 'night' || k === 'fog') return null;
+    if (k === 'storm') {
+      const f = this.lightning(t);
+      return f > 0 ? { alpha: (dark ? .8 : .5) * f, blur: .6, vx: fs * .015, vy: fs * .07, color: dark ? '#000' : '#1b1e2a' } : null;
+    }
+    const sun = sunState(S.hour);
+    if (!sun.up) return null;
+    const len = clamp(1 / Math.tan(Math.max(sun.elev, 3) * Math.PI / 180), .3, 4.5) * fs * .06;
+    let dx = -sun.a, dy = .5 + .5 * (1 - Math.abs(sun.a));
+    const n = Math.hypot(dx, dy); dx /= n; dy /= n;
+    const warm = sun.elev < 18;
+    const base = { vx: dx * len, vy: dy * len, color: dark ? '#000' : warm ? '#5a3a1c' : '#2a2c33' };
+    const crisp = dark ? .8 : .3;
+    switch (k) {
+      case 'sun': case 'wind': return { ...base, alpha: crisp, blur: 1.2 + len * .05 };
+      case 'partly': return { ...base, alpha: crisp * cloudPass(t, this.seed), blur: 1.6 + len * .05 };
+      case 'cloudy': return { ...base, vx: base.vx * .5, vy: base.vy * .5 + 2, alpha: dark ? .5 : .16, blur: 9 };
+      case 'drizzle': case 'rain': return { ...base, vx: base.vx * .35, vy: base.vy * .35 + 2, alpha: dark ? .45 : .12, blur: 11 };
+      case 'snow': return { ...base, vx: base.vx * .4, vy: base.vy * .4 + 2, alpha: dark ? .55 : .2, blur: 7, color: dark ? '#0a1530' : '#4a6a96' };
+    }
+    return null;
+  }
+
+  drawShadow(c, t) {
+    const p = this.shadowParams(t);
+    if (!p) return;
+    const busy = this.trans.some(Boolean);
+    const key = [this.text, p.vx.toFixed(1), p.vy.toFixed(1), p.blur, p.color, this.w, this.h, this.wx.k === 'storm' ? t : ''].join('|');
+    if (busy || key !== this.shKey) {
+      const T = this.tctx, Sx = this.sctx, W = this.tmp.width, H = this.tmp.height, N = 14;
+      T.setTransform(1, 0, 0, 1, 0, 0);
+      T.clearRect(0, 0, W, H);
+      for (let i = 1; i <= N; i++) {
+        T.globalAlpha = Math.pow(1 - (i - 1) / N, 1.3);
+        T.drawImage(this.layer, p.vx * DPR * i / N, p.vy * DPR * i / N);
+      }
+      T.globalAlpha = 1;
+      T.globalCompositeOperation = 'source-in';
+      T.fillStyle = p.color;
+      T.fillRect(0, 0, W, H);
+      T.globalCompositeOperation = 'source-over';
+      Sx.setTransform(1, 0, 0, 1, 0, 0);
+      Sx.clearRect(0, 0, W, H);
+      Sx.filter = `blur(${p.blur * DPR}px)`;
+      Sx.drawImage(this.tmp, 0, 0);
+      Sx.filter = 'none';
+      this.shKey = busy ? '' : key;
+    }
+    c.save();
+    c.globalAlpha = p.alpha;
+    c.drawImage(this.shadow, 0, 0, this.w, this.h);
+    c.restore();
+  }
+
+  // Low sun warms the side of the digits that faces it.
+  goldenHour(L, t) {
+    const k = this.wx.k;
+    if (!['sun', 'partly', 'wind'].includes(k)) return;
+    const sun = sunState(S.hour);
+    const b = this.bbox;
+    L.save();
+    L.globalCompositeOperation = 'source-atop';
+    if (sun.up && sun.elev < 24) {
+      const amt = (1 - sun.elev / 24) * (k === 'partly' ? cloudPass(t, this.seed) : 1);
+      const g = L.createLinearGradient(sun.a < 0 ? b.x0 : b.x1, 0, sun.a < 0 ? b.x1 : b.x0, 0);
+      g.addColorStop(0, `rgba(255,140,60,${.6 * amt})`);
+      g.addColorStop(.7, 'rgba(255,140,60,0)');
+      L.fillStyle = g;
+      L.fillRect(0, 0, this.w, this.h);
+    } else if (!sun.up) {
+      L.fillStyle = 'rgba(90,110,200,.18)';
+      L.fillRect(0, 0, this.w, this.h);
+    }
+    L.restore();
+  }
+
+  composite(c, t, F) {
+    const k = this.wx.k;
+    c.save();
+    if (F.shadow && k === 'fog') { c.globalAlpha = .78; c.filter = 'blur(0.7px)'; }
+    if (F.material && (k === 'fog' || k === 'storm')) c.filter = 'blur(0.5px)';
+    if ((F.shadow && k === 'night') || (F.material && k === 'night')) {
+      const ill = moonIllum();
+      c.shadowColor = `rgba(${this.colors.glow},${F.material ? .6 : (this.colors.dark ? .25 + .45 * ill : .15 + .25 * ill)})`;
+      c.shadowBlur = F.material ? 14 : 10 + 22 * ill;
+    }
+    c.drawImage(this.layer, 0, 0, this.w, this.h);
+    c.restore();
+  }
+
+  drawFlash(c, t, F) {
+    let f = 0;
+    if (F.shadow || F.particles) f = this.lightning(t);
+    if (this.flashT != null) f = Math.max(f, clamp(1 - (t - this.flashT) / .35));
+    if (f <= 0) return;
+    c.fillStyle = this.colors.dark ? `rgba(200,210,255,${.12 * f})` : `rgba(255,255,255,${.4 * f})`;
+    c.fillRect(0, 0, this.w, this.h);
+  }
+}
+
+/* ================= 2 · minute transitions ================= */
+function makeTransition(sc, from, to) {
+  const k = sc.wx.k, fg = sc.colors.fg, sw = sc.sw, sh = sc.sh;
+  const A = sc.sprite(from, fg), B = sc.sprite(to, fg);
+  const seed = rand(50);
+  const slice = (L, img, sx, sy, w, h, dx, dy, dw = w, dh = h) => {
+    if (w > 0.2 && h > 0.2) L.drawImage(img, sx * DPR, sy * DPR, w * DPR, h * DPR, dx, dy, dw, dh);
+  };
+  const tr = { t0: now(), dur: 1.2, draw: () => {} };
+  const kind = { sun: 'flare', partly: 'flare', cloudy: 'slide', fog: 'mist', drizzle: 'drip', rain: 'drip', storm: 'flash', snow: 'snow', wind: 'blow', night: 'stars' }[k];
+
+  if (kind === 'drip') {
+    const cols = Math.ceil(sw / 2);
+    const sp = Array.from({ length: cols }, (_, c) => .3 + 1.5 * noise1(c * .32 + seed));
+    const dl = Array.from({ length: cols }, (_, c) => noise1(c * .22 + seed + 9));
+    tr.dur = k === 'drizzle' ? 1.7 : 1.3;
+    tr.draw = (L, p, x, y) => {
+      const po = clamp(p / .75);
+      if (po < 1) {
+        L.globalAlpha = 1 - easeIn(po);
+        for (let c = 0; c < cols; c++) {
+          const off = easeIn(po) * sh * .5 * sp[c];
+          slice(L, A, c * 2, 0, 2, sh, x + c * 2, y + off * .45, 2, sh + off * .55);
+        }
+      }
+      const q = clamp((p - .2) / .8);
+      L.globalAlpha = 1;
+      for (let c = 0; c < cols; c++) {
+        const hh = ease(clamp((q - dl[c] * .45) / .55)) * sh;
+        slice(L, B, c * 2, 0, 2, hh, x + c * 2, y);
+      }
+    };
+  } else if (kind === 'snow') {
+    const fall = sc.charPts(from, 2.5).map(([px, py]) => ({ px, py, vx: rand(-14, 14) + S.wind * 40, vy: rand(-8, 10), g: rand(40, 80), d: rand(0, .25) }));
+    const form = sc.charPts(to, 2.5).map(([px, py]) => ({ px, py, sx: px + rand(-36, 36), sy: py - rand(30, 120), d: rand(0, .3), ph: rand(6.28) }));
+    tr.dur = 1.8;
+    tr.draw = (L, p, x, y) => {
+      L.globalAlpha = 1 - clamp(p * 5);
+      L.drawImage(A, x, y, sw, sh);
+      L.fillStyle = sc.colors.dark ? '#ffffff' : '#8fa2bd';
+      for (const f of fall) {
+        const tt = clamp(p * 1.5 - f.d);
+        L.globalAlpha = 1 - clamp(tt / .9);
+        if (L.globalAlpha <= 0) continue;
+        L.fillRect(x + f.px + f.vx * tt - .9, y + f.py + f.vy * tt + f.g * tt * tt - .9, 1.8, 1.8);
+      }
+      L.fillStyle = fg;
+      const fade = 1 - clamp((p - .82) / .18);
+      for (const g of form) {
+        const q = ease(clamp((p - .12 - g.d) / .55));
+        L.globalAlpha = clamp(q * 2) * fade;
+        if (L.globalAlpha <= 0) continue;
+        L.fillRect(x + lerp(g.sx, g.px, q) + Math.sin(p * 9 + g.ph) * (1 - q) * 5 - .9, y + lerp(g.sy, g.py, q) - .9, 1.8, 1.8);
+      }
+      L.globalAlpha = clamp((p - .76) / .24);
+      L.drawImage(B, x, y, sw, sh);
+    };
+  } else if (kind === 'blow') {
+    const rows = Math.ceil(sh / 2), dir = S.wind < 0 ? -1 : 1;
+    const nz = Array.from({ length: rows }, (_, r) => noise1(r * .18 + seed));
+    tr.dur = 1.25;
+    tr.draw = (L, p, x, y) => {
+      const po = clamp(p / .7);
+      if (po < 1) {
+        L.globalAlpha = 1 - po;
+        for (let r = 0; r < rows; r++) slice(L, A, 0, r * 2, sw, 2, x + easeIn(po) * (50 + 160 * nz[r]) * dir, y + r * 2 - easeIn(po) * 6);
+      }
+      const q = clamp((p - .3) / .7);
+      L.globalAlpha = q;
+      for (let r = 0; r < rows; r++) slice(L, B, 0, r * 2, sw, 2, x - (1 - ease(q)) * (40 + 90 * nz[r]) * dir, y + r * 2);
+    };
+  } else if (kind === 'flare') {
+    const soft = k === 'partly' ? .6 : 1;
+    const WA = sc.sprite(from, sc.colors.warm), WB = sc.sprite(to, sc.colors.warm);
+    tr.dur = 1.3;
+    tr.draw = (L, p, x, y) => {
+      const po = clamp(p / .5);
+      if (po < 1) {
+        L.globalAlpha = 1 - po;
+        L.filter = `blur(${po * 3}px)`;
+        L.drawImage(A, x, y, sw, sh);
+        L.globalAlpha = po * (1 - po) * 2.4 * soft;
+        L.filter = `blur(${2 + po * 6}px)`;
+        L.drawImage(WA, x, y, sw, sh);
+      }
+      const q = clamp((p - .3) / .7);
+      if (q > 0) {
+        L.globalAlpha = (1 - q) * .95 * soft;
+        L.filter = `blur(${(1 - q) * 6}px)`;
+        L.drawImage(WB, x, y, sw, sh);
+        L.filter = 'none';
+        L.globalAlpha = ease(q);
+        L.drawImage(B, x, y, sw, sh);
+      }
+      L.filter = 'none';
+    };
+  } else if (kind === 'mist' || kind === 'slide') {
+    const mist = kind === 'mist', off = sc.fs * .08;
+    tr.dur = mist ? 1.6 : 1.1;
+    tr.draw = (L, p, x, y) => {
+      const po = clamp(p / .7), q = clamp((p - .3) / .7);
+      if (po < 1) {
+        L.globalAlpha = 1 - po;
+        L.filter = `blur(${po * (mist ? 9 : 2)}px)`;
+        L.drawImage(A, x, y + (mist ? 0 : ease(po) * off), sw, sh);
+      }
+      if (q > 0) {
+        L.globalAlpha = q;
+        L.filter = `blur(${(1 - q) * (mist ? 9 : 2)}px)`;
+        L.drawImage(B, x, y - (mist ? 0 : (1 - ease(q)) * off), sw, sh);
+      }
+      L.filter = 'none';
+    };
+  } else if (kind === 'flash') {
+    tr.dur = .9;
+    sc.flashT = tr.t0 + .05;
+    tr.draw = (L, p, x, y) => {
+      if (p < .1) { L.drawImage(A, x, y, sw, sh); return; }
+      const q = (p - .1) / .9;
+      L.globalAlpha = q < .5 ? (Math.sin(p * 90) > 0 ? 1 : .2) : 1;
+      L.drawImage(B, x, y, sw, sh);
+    };
+  } else if (kind === 'stars') {
+    const sparks = sc.charPts(from, 4).map(([px, py]) => ({ px, py, ph: rand(6.28), sp: rand(5, 10), vy: rand(-10, -2), vx: rand(-3, 3) }));
+    tr.dur = 1.7;
+    tr.draw = (L, p, x, y, t) => {
+      L.globalAlpha = 1 - clamp(p * 3);
+      L.drawImage(A, x, y, sw, sh);
+      L.fillStyle = sc.colors.dark ? '#ffffff' : '#4b52a8';
+      const life = 1 - clamp((p - .1) / .7);
+      for (const s of sparks) {
+        L.globalAlpha = life * (.35 + .65 * Math.pow(.5 + .5 * Math.sin(t * s.sp + s.ph), 2));
+        if (L.globalAlpha <= 0) continue;
+        L.fillRect(x + s.px + s.vx * p - .8, y + s.py + s.vy * p * 1.6 - .8, 1.6, 1.6);
+      }
+      const q = clamp((p - .35) / .65);
+      L.globalAlpha = easeIn(q);
+      L.drawImage(B, x, y, sw, sh);
+    };
+  }
+  return tr;
+}
+
+/* ================= 3 · particles ================= */
+function combine(...systems) {
+  return {
+    back: (c, t, dt) => systems.forEach(s => s.back?.(c, t, dt)),
+    front: (c, t, dt) => systems.forEach(s => s.front?.(c, t, dt)),
+    onText: ch => systems.forEach(s => s.onText?.(ch)),
+  };
+}
+
+function makeParticles(sc) {
+  switch (sc.wx.k) {
+    case 'rain': return rainSys(sc, {});
+    case 'drizzle': return rainSys(sc, { drizzle: true });
+    case 'storm': return rainSys(sc, { heavy: true });
+    case 'snow': return snowSys(sc);
+    case 'night': return nightSys(sc);
+    case 'sun': return sunSys(sc, false);
+    case 'partly': return combine(cloudSys(sc, 2, .8), sunSys(sc, true));
+    case 'cloudy': return cloudSys(sc, 4, 1);
+    case 'fog': return fogSys(sc);
+    case 'wind': return windSys(sc);
+  }
+}
+
+function rainSys(sc, o) {
+  const drops = [], splashes = [], runners = [], beads = [];
+  let acc = 0;
+  const C = sc.colors;
+  return {
+    back(c, t) {
+      if (!o.heavy) return;
+      const f = sc.lightning(t);
+      if (f <= 0) return;
+      // Backlight: the sky flashes behind the digits, so they read as silhouettes for a moment.
+      const g = c.createRadialGradient(sc.w / 2, sc.h * .2, 0, sc.w / 2, sc.h * .2, sc.w * .7);
+      g.addColorStop(0, C.dark ? `rgba(190,200,255,${.35 * f})` : `rgba(120,130,190,${.25 * f})`);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g;
+      c.fillRect(0, 0, sc.w, sc.h);
+      if (f > .3 && sc.bolt) {
+        c.save();
+        c.strokeStyle = C.dark ? `rgba(235,240,255,${f})` : `rgba(90,100,170,${f})`;
+        c.lineWidth = 1.4;
+        c.shadowColor = C.dark ? 'rgba(180,190,255,.9)' : 'rgba(90,100,170,.6)';
+        c.shadowBlur = 8;
+        strokePts(c, sc.bolt);
+        c.restore();
+      }
+    },
+    front(c, t, dt) {
+      const I = S.intensity;
+      const rate = (o.drizzle ? 40 + 90 * I : 60 + 320 * I) * (o.heavy ? 1.7 : 1) * sc.w / 500 * sc.lite;
+      acc += rate * dt;
+      while (acc > 1) {
+        acc--;
+        drops.push({ x: rand(-60, sc.w + 60), y: rand(-30, -4), vy: o.drizzle ? rand(200, 280) : rand(520, 720), len: o.drizzle ? rand(4, 7) : rand(10, 18) });
+      }
+      const vx = (S.wind + (o.heavy ? .35 * Math.sign(S.wind || 1) : 0)) * (o.drizzle ? 120 : 240);
+      c.lineCap = 'round';
+      c.lineWidth = o.drizzle ? .9 : 1.1;
+      c.strokeStyle = `rgba(${C.rain},${o.drizzle ? .45 : .5})`;
+      c.beginPath();
+      for (let i = drops.length - 1; i >= 0; i--) {
+        const d = drops[i];
+        d.x += vx * dt; d.y += d.vy * dt;
+        if (!d.free && sc.inMask(d.x, d.y)) {
+          drops.splice(i, 1);
+          if (!o.drizzle) for (let k = 0; k < 3; k++) splashes.push({ x: d.x, y: d.y - 1, vx: rand(-70, 70), vy: -rand(50, 120), life: rand(.2, .35) });
+          if (Math.random() < (o.drizzle ? .1 : .2)) runners.push({ x: d.x, y: d.y + 1, v: rand(16, 38) });
+          continue;
+        }
+        if (d.y > sc.h + 20) { drops.splice(i, 1); continue; }
+        c.moveTo(d.x, d.y);
+        c.lineTo(d.x - vx * d.len / d.vy, d.y - d.len);
+      }
+      c.stroke();
+      c.fillStyle = `rgba(${C.rain},.7)`;
+      for (let i = splashes.length - 1; i >= 0; i--) {
+        const s = splashes[i];
+        s.vy += 650 * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
+        if (s.life <= 0) { splashes.splice(i, 1); continue; }
+        c.globalAlpha = clamp(s.life / .25);
+        c.fillRect(s.x - .6, s.y - .6, 1.2, 1.2);
+      }
+      c.globalAlpha = 1;
+      // Condensation beads (drizzle): appear on the digits, grow, sometimes roll down.
+      if (o.drizzle) {
+        if (beads.length < 22 * sc.lite && sc.pts.length && Math.random() < dt * 6) {
+          const [x, y] = sc.pts[Math.floor(Math.random() * sc.pts.length)];
+          beads.push({ x, y, age: 0, life: rand(4, 8), max: rand(.8, 1.6) });
+        }
+        c.fillStyle = C.hl;
+        for (let i = beads.length - 1; i >= 0; i--) {
+          const b = beads[i];
+          b.age += dt;
+          if (b.age > b.life || !sc.inMask(b.x, b.y)) {
+            beads.splice(i, 1);
+            if (b.age > b.life && Math.random() < .35) runners.push({ x: b.x, y: b.y, v: rand(10, 22) });
+            continue;
+          }
+          c.globalAlpha = clamp(b.age / 1.2) * clamp((b.life - b.age) / .8);
+          c.beginPath(); c.arc(b.x, b.y, b.max * ease(clamp(b.age / 2.5)), 0, 6.283); c.fill();
+        }
+        c.globalAlpha = 1;
+      }
+      // Runners: a drop sliding down the face of a digit, then dripping off its lower edge.
+      for (let i = runners.length - 1; i >= 0; i--) {
+        const r = runners[i];
+        r.y += r.v * dt;
+        if (!sc.inMask(r.x, r.y + 1.5)) {
+          runners.splice(i, 1);
+          drops.push({ x: r.x, y: r.y + 3, vy: 240, len: 4, free: true });
+          continue;
+        }
+        const g = c.createLinearGradient(r.x, r.y - 10, r.x, r.y);
+        g.addColorStop(0, C.hlSoft + '0)');
+        g.addColorStop(1, C.hlSoft + '.45)');
+        c.strokeStyle = g;
+        c.lineWidth = 1.4;
+        c.beginPath(); c.moveTo(r.x, r.y - 10); c.lineTo(r.x, r.y); c.stroke();
+        c.fillStyle = C.hl;
+        c.beginPath(); c.arc(r.x, r.y, 1.4, 0, 6.283); c.fill();
+      }
+    },
+  };
+}
+
+function snowSys(sc) {
+  const cell = 2, gw = Math.ceil(sc.w / cell), gh = Math.ceil(sc.h / cell);
+  const occ = new Uint8Array(gw * gh);
+  const refill = () => {
+    for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+      const i = gy * gw + gx;
+      if (occ[i] !== 2) occ[i] = sc.inMask(gx * cell + 1, gy * cell + 1) ? 1 : 0;
+    }
+  };
+  refill();
+  let flakes = [], stuck = [], acc = 0;
+  const spawn = (x, y, vy) => flakes.push({ x, y, vy: vy ?? rand(16, 34), ph: rand(6.28), r: rand(.9, 2) });
+  // Start with a light dusting so the caps are visible right away.
+  for (let k = 0; k < 120; k++) spawn(rand(sc.w), rand(-sc.h, sc.h * .4));
+  // Snow that "already fell": thin caps on the top edges, uneven like real snow.
+  for (let gx = 0; gx < gw; gx++) {
+    let gy = 0;
+    while (gy < gh && !occ[gy * gw + gx]) gy++;
+    if (gy >= gh || gy < 2 || occ[gy * gw + gx] !== 1) continue;
+    const depth = noise1(gx * .15 + sc.seed) > .45 ? (noise1(gx * .4 + sc.seed) > .6 ? 2 : 1) : 0;
+    for (let d = 1; d <= depth; d++) { occ[(gy - d) * gw + gx] = 2; stuck.push({ gx, gy: gy - d }); }
+  }
+  const C = sc.colors;
+  return {
+    front(c, t, dt) {
+      acc += (14 + 60 * S.intensity) * sc.w / 500 * sc.lite * dt;
+      while (acc > 1) { acc--; spawn(rand(-40, sc.w + 40), -5); }
+      const wind = S.wind * 45;
+      c.fillStyle = C.capEdge;
+      for (const s of stuck) c.fillRect(s.gx * cell - .3, s.gy * cell + .9, cell + .6, cell);
+      c.fillStyle = C.snowCap;
+      for (const s of stuck) c.fillRect(s.gx * cell - .3, s.gy * cell, cell + .6, cell + .4);
+      c.fillStyle = C.snowAir;
+      c.beginPath();
+      for (let i = flakes.length - 1; i >= 0; i--) {
+        const f = flakes[i];
+        f.x += (Math.sin(t * 1.2 + f.ph) * 10 + wind) * dt;
+        f.y += f.vy * dt;
+        if (f.y > sc.h + 5 || f.x < -50 || f.x > sc.w + 50) { flakes.splice(i, 1); continue; }
+        const gx = Math.floor(f.x / cell), gy = Math.floor(f.y / cell);
+        if (gx >= 0 && gx < gw && gy >= 0 && gy + 1 < gh && !occ[gy * gw + gx]) {
+          const below = occ[(gy + 1) * gw + gx];
+          if (below) {
+            let depth = 0;
+            for (let k = 1; k <= 4 && gy + k < gh && occ[(gy + k) * gw + gx] === 2; k++) depth++;
+            if (depth < 3) { occ[gy * gw + gx] = 2; stuck.push({ gx, gy }); flakes.splice(i, 1); continue; }
+            f.x += (Math.random() < .5 ? -1 : 1) * cell * 1.5;
+          }
+        }
+        c.moveTo(f.x + f.r, f.y);
+        c.arc(f.x, f.y, f.r, 0, 6.283);
+      }
+      c.fill();
+    },
+    onText(changed) {
+      const ranges = changed.map(i => [sc.cellX(i) + sc.pad * .5, sc.cellX(i) + sc.sw - sc.pad * .5]);
+      stuck = stuck.filter(s => {
+        const x = s.gx * cell;
+        const hit = ranges.some(([a, b]) => x >= a && x < b);
+        if (hit) { occ[s.gy * gw + s.gx] = 0; spawn(x + 1, s.gy * cell, rand(25, 60)); }
+        return !hit;
+      });
+      refill();
+    },
+  };
+}
+
+function nightSys(sc) {
+  const C = sc.colors;
+  const stars = Array.from({ length: Math.round(36 * sc.lite) }, () => ({ x: rand(sc.w), y: rand(sc.h * .95), r: rand(.5, 1.4), ph: rand(6.28), sp: rand(.4, 1.4) }));
+  let shoot = null, next = now() + rand(2, 5);
+  return {
+    back(c, t) {
+      for (const s of stars) {
+        const a = .15 + .85 * Math.pow(.5 + .5 * Math.sin(t * s.sp + s.ph), 3);
+        c.fillStyle = C.star + (a * (C.dark ? .9 : .5)) + ')';
+        c.beginPath(); c.arc(s.x, s.y, s.r, 0, 6.283); c.fill();
+      }
+      if (!shoot && t > next) shoot = { t0: t, x: rand(sc.w * .05, sc.w * .6), y: rand(sc.h * .05, sc.h * .4), vx: rand(260, 380), vy: rand(60, 130) };
+      if (shoot) {
+        const d = t - shoot.t0;
+        if (d > .9) { shoot = null; next = t + rand(8, 15); }
+        else {
+          const x = shoot.x + shoot.vx * d, y = shoot.y + shoot.vy * d, a = Math.sin(Math.PI * d / .9);
+          const g = c.createLinearGradient(x, y, x - shoot.vx * .2, y - shoot.vy * .2);
+          g.addColorStop(0, C.star + (.9 * a) + ')');
+          g.addColorStop(1, C.star + '0)');
+          c.strokeStyle = g;
+          c.lineWidth = 1.3;
+          c.beginPath(); c.moveTo(x, y); c.lineTo(x - shoot.vx * .2, y - shoot.vy * .2); c.stroke();
+        }
+      }
+    },
+    front(c, t) {
+      for (const d of sc.colonDots) {
+        const a = .22 + .2 * Math.sin(t * .8);
+        const g = c.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r * 4);
+        g.addColorStop(0, `rgba(${C.glow},${a})`);
+        g.addColorStop(1, `rgba(${C.glow},0)`);
+        c.fillStyle = g;
+        c.fillRect(d.x - d.r * 4, d.y - d.r * 4, d.r * 8, d.r * 8);
+      }
+    },
+  };
+}
+
+function sunSys(sc, partly) {
+  const C = sc.colors;
+  const motes = Array.from({ length: Math.round(22 * sc.lite) }, () => ({ s: rand(), u: rand(-1, 1), sz: rand(.5, 1.5), ph: rand(6.28), v: rand(.008, .02) }));
+  return {
+    back(c, t, dt) {
+      const sun = sunState(S.hour);
+      if (!sun.up) return;
+      const k = partly ? cloudPass(t, sc.seed) : 1;
+      const ox = sun.a < 0 ? -sc.w * .05 : sc.w * 1.05, oy = -sc.h * .15;
+      const ex = sc.w * (.5 + sun.a * .12), ey = sc.h * 1.05;
+      const ax = ex - ox, ay = ey - oy, len = Math.hypot(ax, ay);
+      const px = -ay / len, py = ax / len, w0 = sc.h * .06, w1 = sc.h * .42;
+      const g = c.createLinearGradient(ox, oy, ex, ey);
+      g.addColorStop(0, `rgba(${C.mote},${.12 * k})`);
+      g.addColorStop(1, `rgba(${C.mote},0)`);
+      c.fillStyle = g;
+      c.beginPath();
+      c.moveTo(ox + px * w0, oy + py * w0); c.lineTo(ex + px * w1, ey + py * w1);
+      c.lineTo(ex - px * w1, ey - py * w1); c.lineTo(ox - px * w0, oy - py * w0);
+      c.fill();
+      for (const m of motes) {
+        m.s = (m.s + m.v * dt) % 1;
+        m.u = clamp(m.u + (noise1(t * .2 + m.ph) - .5) * .25 * dt, -1, 1);
+        const wd = lerp(w0, w1, m.s);
+        const x = ox + ax * m.s + px * m.u * wd, y = oy + ay * m.s + py * m.u * wd;
+        const a = (1 - Math.abs(m.u)) * (.35 + .65 * Math.pow(Math.sin(t * 1.3 + m.ph), 2)) * k * (1 - m.s * .4);
+        c.fillStyle = `rgba(${C.mote},${a * (C.dark ? .8 : .7)})`;
+        c.beginPath(); c.arc(x, y, m.sz, 0, 6.283); c.fill();
+      }
+    },
+  };
+}
+
+function cloudSprite(rgb) {
+  const c = document.createElement('canvas');
+  c.width = 220; c.height = 100;
+  const x = c.getContext('2d');
+  for (const [cx, cy, r] of [[60, 60, 40], [100, 45, 48], [150, 58, 40], [120, 70, 42], [80, 70, 36]]) {
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, `rgba(${rgb},.55)`);
+    g.addColorStop(1, `rgba(${rgb},0)`);
+    x.fillStyle = g;
+    x.fillRect(0, 0, 220, 100);
+  }
+  return c;
+}
+
+function cloudSys(sc, n, alpha) {
+  const spr = cloudSprite(sc.colors.cloud);
+  const clouds = Array.from({ length: n }, () => ({ x: rand(-100, sc.w), y: rand(sc.h * .02, sc.h * .55), s: rand(.9, 1.8), v: rand(5, 12) }));
+  return {
+    back(c, t, dt) {
+      const dir = S.wind < 0 ? -1 : 1, boost = 1 + Math.abs(S.wind) * 2;
+      for (const b of clouds) {
+        b.x += dir * b.v * boost * dt;
+        const w = 220 * b.s, h = 100 * b.s;
+        if (dir > 0 && b.x > sc.w + 20) b.x = -w;
+        if (dir < 0 && b.x < -w - 20) b.x = sc.w;
+        c.globalAlpha = alpha * (sc.colors.dark ? .4 : .28);
+        c.drawImage(spr, b.x, b.y, w, h);
+      }
+      c.globalAlpha = 1;
+    },
+  };
+}
+
+function fogSys(sc) {
+  const C = sc.colors, mid = sc.base - sc.fs * .4;
+  const banks = Array.from({ length: 5 }, (_, i) => ({ x: rand(sc.w), y: mid + rand(-sc.fs * .6, sc.fs * .6), rw: rand(sc.w * .25, sc.w * .5), rh: rand(sc.fs * .25, sc.fs * .5), v: rand(6, 14) * (i % 2 ? 1 : .7) }));
+  return {
+    front(c, t, dt) {
+      for (const b of banks) {
+        b.x += b.v * dt;
+        if (b.x - b.rw > sc.w) b.x = -b.rw;
+        c.save();
+        c.translate(b.x, b.y);
+        c.scale(b.rw / b.rh, 1);
+        const g = c.createRadialGradient(0, 0, 0, 0, 0, b.rh);
+        g.addColorStop(0, C.fog + (C.dark ? .38 : .7) + ')');
+        g.addColorStop(1, C.fog + '0)');
+        c.fillStyle = g;
+        c.beginPath(); c.arc(0, 0, b.rh, 0, 6.283); c.fill();
+        c.restore();
+      }
+    },
+  };
+}
+
+function windSys(sc) {
+  const C = sc.colors, streaks = [], leaves = [];
+  let nextS = 0, nextL = now() + rand(1, 3);
+  return {
+    front(c, t, dt) {
+      const dir = S.wind < 0 ? -1 : 1, strength = Math.max(.35, Math.abs(S.wind));
+      if (t > nextS) {
+        nextS = t + rand(.35, .9) / (strength * sc.lite);
+        streaks.push({ x: dir > 0 ? -160 : sc.w + 160, y: rand(sc.h * .1, sc.h * .9), len: rand(60, 150), amp: rand(2, 7), ph: rand(6.28), sp: rand(260, 420) * strength });
+      }
+      if (t > nextL) {
+        nextL = t + rand(4, 8);
+        leaves.push({ x: dir > 0 ? -10 : sc.w + 10, y: rand(sc.h * .15, sc.h * .7), vx: rand(110, 180) * strength * dir, rot: rand(6.28), vr: rand(3, 7), ph: rand(6.28) });
+      }
+      c.lineWidth = 1;
+      c.lineCap = 'round';
+      for (let i = streaks.length - 1; i >= 0; i--) {
+        const s = streaks[i];
+        s.x += s.sp * dir * dt;
+        if ((dir > 0 && s.x - s.len > sc.w) || (dir < 0 && s.x + s.len < 0)) { streaks.splice(i, 1); continue; }
+        for (let k = 0; k < s.len; k += 6) {
+          const x = s.x - k * dir, y = s.y + Math.sin(x * .02 + s.ph) * s.amp;
+          const x2 = x - 6 * dir, y2 = s.y + Math.sin(x2 * .02 + s.ph) * s.amp;
+          c.strokeStyle = C.streak + (.3 * (1 - k / s.len)) + ')';
+          c.beginPath(); c.moveTo(x, y); c.lineTo(x2, y2); c.stroke();
+        }
+      }
+      c.fillStyle = C.leaf;
+      for (let i = leaves.length - 1; i >= 0; i--) {
+        const l = leaves[i];
+        l.x += l.vx * dt;
+        l.rot += l.vr * dt;
+        const y = l.y + Math.sin(t * 2 + l.ph) * 14;
+        if (l.x < -20 || l.x > sc.w + 20) { leaves.splice(i, 1); continue; }
+        c.save();
+        c.translate(l.x, y);
+        c.rotate(l.rot);
+        c.scale(1, Math.abs(Math.cos(l.rot * .7)) * .8 + .2);
+        c.globalAlpha = .8;
+        c.beginPath(); c.ellipse(0, 0, 5, 2.4, 0, 0, 6.283); c.fill();
+        c.restore();
+      }
+    },
+  };
+}
+
+/* ================= 4 · materials ================= */
+function brushed(sc) {
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(sc.w)); c.height = Math.max(1, Math.round(sc.h));
+  const x = c.getContext('2d');
+  const col = sc.colors.dark ? '0,0,0' : '255,255,255';
+  for (let y = 0; y < c.height; y++) {
+    x.fillStyle = `rgba(${col},${Math.random() * .5})`;
+    x.fillRect(0, y, c.width, 1);
+  }
+  return c;
+}
+
+function noiseCanvas() {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 24;
+  return { c, x: c.getContext('2d'), img: new ImageData(64, 24) };
+}
+function paintNoise(nc, t, rgb, maxA, speed) {
+  const d = nc.img.data;
+  for (let y = 0; y < 24; y++) for (let x = 0; x < 64; x++) {
+    const n = noise2(x * .11 + t * speed, y * .24 + t * speed * .3) * .65 + noise2(x * .27 - t * speed * .7, y * .5) * .35;
+    const i = (y * 64 + x) * 4;
+    d[i] = rgb[0]; d[i + 1] = rgb[1]; d[i + 2] = rgb[2];
+    d[i + 3] = clamp((n - .3) * 2) * maxA * 255;
+  }
+  nc.x.putImageData(nc.img, 0, 0);
+}
+
+function makeMaterial(sc) {
+  const k = sc.wx.k, C = sc.colors, b = () => sc.bbox;
+  const atop = (L, fn) => { L.save(); L.globalCompositeOperation = 'source-atop'; fn(); L.restore(); };
+  const sunLight = (L, t, mult) => {
+    const sun = sunState(S.hour);
+    if (!sun.up) return;
+    const B = b(), from = sun.a < 0 ? B.x0 : B.x1, to = sun.a < 0 ? B.x1 : B.x0;
+    const g = L.createLinearGradient(from, B.y0, to, B.y1);
+    const a = (C.dark ? .55 : .6) * mult * (.92 + .08 * Math.sin(t * .4));
+    g.addColorStop(0, `rgba(255,190,110,${a})`);
+    g.addColorStop(.55, 'rgba(255,190,110,0)');
+    L.fillStyle = g;
+    L.fillRect(0, 0, sc.w, sc.h);
+  };
+
+  if (k === 'sun' || k === 'partly') {
+    const tex = brushed(sc);
+    return {
+      draw(L, t) {
+        atop(L, () => {
+          L.globalAlpha = .14; L.drawImage(tex, 0, 0, sc.w, sc.h); L.globalAlpha = 1;
+          sunLight(L, t, k === 'partly' ? cloudPass(t, sc.seed) : 1);
+        });
+      },
+    };
+  }
+  if (k === 'cloudy') {
+    const spr = cloudSprite(C.dark ? '20,22,30' : '255,255,255');
+    const blobs = Array.from({ length: 3 }, () => ({ x: rand(sc.w), y: rand(b().y0 - 30, b().y1 - 40), s: rand(.8, 1.4), v: rand(6, 12) }));
+    return {
+      draw(L, t, dt) {
+        atop(L, () => {
+          for (const o of blobs) {
+            o.x += o.v * dt;
+            if (o.x > sc.w) o.x = -220 * o.s;
+            L.globalAlpha = .55;
+            L.drawImage(spr, o.x, o.y, 220 * o.s, 100 * o.s);
+          }
+        });
+      },
+    };
+  }
+  if (k === 'fog' || k === 'storm') {
+    const nc = noiseCanvas();
+    const rgb = k === 'fog' ? (C.dark ? [15, 17, 22] : [241, 238, 232]) : (C.dark ? [25, 28, 60] : [170, 180, 225]);
+    return {
+      draw(L, t) {
+        paintNoise(nc, t, rgb, k === 'fog' ? .75 : .85, k === 'fog' ? .18 : .45);
+        const B = b();
+        atop(L, () => {
+          L.imageSmoothingEnabled = true;
+          L.drawImage(nc.c, B.x0 - 10, B.y0 - 6, B.x1 - B.x0 + 20, B.y1 - B.y0 + 12);
+          if (k === 'storm') {
+            const f = sc.lightning(t);
+            if (f > .3 && sc.innerBolt) {
+              L.strokeStyle = `rgba(255,255,255,${f})`;
+              L.lineWidth = 1.6;
+              L.shadowColor = 'rgba(200,210,255,1)';
+              L.shadowBlur = 6;
+              strokePts(L, sc.innerBolt);
+            }
+          }
+        });
+      },
+    };
+  }
+  if (k === 'drizzle' || k === 'rain') {
+    const pick = () => sc.pts[Math.floor(Math.random() * sc.pts.length)] || [0, 0];
+    const beads = Array.from({ length: Math.round((k === 'rain' ? 70 : 140)) }, () => { const [x, y] = pick(); return { x, y, r: rand(.4, 1.1) }; });
+    const drops = k === 'rain' ? Array.from({ length: 14 }, () => { const [x, y] = pick(); return { x, y, r: rand(1.6, 3), wait: rand(0, 4), v: 0, trail: [] }; }) : [];
+    const drawDrop = (L, x, y, r) => {
+      L.fillStyle = C.hlSoft + '.28)';
+      L.beginPath(); L.arc(x, y, r, 0, 6.283); L.fill();
+      L.fillStyle = C.hlSoft + '.85)';
+      L.beginPath(); L.arc(x - r * .35, y - r * .4, r * .35, 0, 6.283); L.fill();
+    };
+    return {
+      draw(L, t, dt) {
+        atop(L, () => {
+          L.fillStyle = C.hlSoft + (k === 'drizzle' ? '.45)' : '.3)');
+          for (const o of beads) { L.beginPath(); L.arc(o.x, o.y, o.r, 0, 6.283); L.fill(); }
+          for (const d of drops) {
+            // Stick-slip: a drop waits, slides a little, waits again.
+            if (d.wait > 0) d.wait -= dt;
+            else { d.v = d.v || rand(25, 60); d.y += d.v * dt; d.trail.push([d.x, d.y]); if (Math.random() < dt * 1.2) { d.wait = rand(.6, 2.5); d.v = 0; } }
+            if (d.trail.length > 60) d.trail.shift();
+            if (d.trail.length > 1) {
+              L.strokeStyle = C.hlSoft + '.16)';
+              L.lineWidth = d.r * 1.1;
+              L.lineCap = 'round';
+              strokePts(L, d.trail);
+            }
+            drawDrop(L, d.x, d.y, d.r);
+            if (d.y > b().y1 + 6 || (d.v && !sc.inMask(d.x, d.y + d.r))) {
+              const [x, y] = pick();
+              Object.assign(d, { x, y, wait: rand(1, 4), v: 0, trail: [] });
+            }
+          }
+        });
+      },
+      onText() { beads.forEach(o => { const [x, y] = pick(); o.x = x; o.y = y; }); },
+    };
+  }
+  if (k === 'snow') {
+    const frost = document.createElement('canvas');
+    frost.width = Math.round(sc.w * DPR); frost.height = Math.round(sc.h * DPR);
+    const F = frost.getContext('2d');
+    F.scale(DPR, DPR);
+    let branches = [], seeded = 0, nextSeed = 0;
+    const seed = (region) => {
+      const pool = region ? sc.edge.filter(([x]) => x >= region[0] && x < region[1]) : sc.edge;
+      if (!pool.length) return;
+      const [x, y] = pool[Math.floor(Math.random() * pool.length)];
+      // Grow inward: aim away from the nearest empty neighbour.
+      let ang = rand(6.28);
+      for (let a = 0; a < 6.28; a += .785) if (!sc.inMask(x + Math.cos(a) * 3, y + Math.sin(a) * 3)) { ang = a + Math.PI; break; }
+      branches.push({ x, y, ang, len: 0, max: rand(10, 26), w: rand(.8, 1.4) });
+    };
+    return {
+      draw(L, t, dt) {
+        if (t > nextSeed && seeded < 70) { nextSeed = t + .25; seeded++; seed(); }
+        F.strokeStyle = C.frost;
+        F.lineCap = 'round';
+        const step = 18 * dt;
+        for (let i = branches.length - 1; i >= 0; i--) {
+          const br = branches[i];
+          br.ang += rand(-.35, .35);
+          const nx = br.x + Math.cos(br.ang) * step, ny = br.y + Math.sin(br.ang) * step;
+          if (!sc.inMask(nx, ny) || br.len > br.max) { branches.splice(i, 1); continue; }
+          F.lineWidth = br.w * (1 - br.len / br.max * .6);
+          F.beginPath(); F.moveTo(br.x, br.y); F.lineTo(nx, ny); F.stroke();
+          br.x = nx; br.y = ny; br.len += step;
+          if (Math.random() < .045 && branches.length < 240) branches.push({ x: nx, y: ny, ang: br.ang + (Math.random() < .5 ? -1 : 1) * rand(.8, 1.2), len: br.len, max: br.max * .75, w: br.w * .8 });
+        }
+        atop(L, () => {
+          const B = b();
+          const g = L.createLinearGradient(0, B.y0, 0, B.y1);
+          g.addColorStop(0, C.dark ? 'rgba(150,190,240,.35)' : 'rgba(200,225,255,.25)');
+          g.addColorStop(1, 'rgba(150,190,240,0)');
+          L.fillStyle = g;
+          L.fillRect(0, 0, sc.w, sc.h);
+          L.drawImage(frost, 0, 0, sc.w, sc.h);
+        });
+      },
+      onText(changed) {
+        for (const i of changed) {
+          const x0 = sc.cellX(i), x1 = x0 + sc.sw;
+          F.clearRect(x0, 0, sc.sw, sc.h);
+          branches = branches.filter(br => br.x < x0 || br.x >= x1);
+          for (let k = 0; k < 12; k++) seed([x0, x1]);
+        }
+      },
+    };
+  }
+  if (k === 'night') {
+    const pick = () => sc.pts[Math.floor(Math.random() * sc.pts.length)] || [0, 0];
+    let stars = Array.from({ length: 90 }, () => { const [x, y] = pick(); return { x, y, r: rand(.3, 1.1), ph: rand(6.28), sp: rand(.6, 2) }; });
+    return {
+      draw(L, t) {
+        atop(L, () => {
+          const B = b();
+          const g = L.createLinearGradient(0, B.y0, 0, B.y1);
+          g.addColorStop(0, C.dark ? '#2c3376' : '#1e2352');
+          g.addColorStop(1, C.dark ? '#191c45' : '#363c8c');
+          L.fillStyle = g;
+          L.fillRect(0, 0, sc.w, sc.h);
+          L.fillStyle = '#ffffff';
+          for (const s of stars) {
+            L.globalAlpha = .2 + .8 * Math.pow(.5 + .5 * Math.sin(t * s.sp + s.ph), 3);
+            L.beginPath(); L.arc(s.x, s.y, s.r, 0, 6.283); L.fill();
+          }
+        });
+      },
+      onText() { stars.forEach(s => { const [x, y] = pick(); s.x = x; s.y = y; }); },
+    };
+  }
+  if (k === 'wind') {
+    const lines = Array.from({ length: 12 }, () => ({ y: rand(), ph: rand(6.28), sp: rand(.5, 1), amp: rand(2, 6), w: rand(.6, 1.4) }));
+    return {
+      draw(L, t) {
+        const dir = S.wind < 0 ? -1 : 1, B = b(), strength = Math.max(.35, Math.abs(S.wind));
+        atop(L, () => {
+          L.strokeStyle = C.hlSoft + '.35)';
+          for (const l of lines) {
+            L.lineWidth = l.w;
+            L.beginPath();
+            const y0 = lerp(B.y0, B.y1, l.y);
+            for (let x = B.x0 - 10; x <= B.x1 + 10; x += 6) {
+              const y = y0 + Math.sin(x * .03 - t * 3 * l.sp * strength * dir + l.ph) * l.amp;
+              x === B.x0 - 10 ? L.moveTo(x, y) : L.lineTo(x, y);
+            }
+            L.stroke();
+          }
+        });
+      },
+    };
+  }
+  return null;
+}
+
+/* ================= UI ================= */
+const scenes = [];
+const grid = document.getElementById('grid');
+
+function buildCards() {
+  for (const wx of WEATHERS) {
+    const card = document.createElement('article');
+    card.className = 'card';
+    card.innerHTML = `<div class="scene"><canvas aria-label="${wx.name}"></canvas><button type="button" class="expand">Крупнее</button></div>`
+      + `<div class="meta"><h3>${wx.name}</h3><span class="code">${wx.code}</span><p></p></div>`;
+    grid.append(card);
+    const sc = new Scene(wx, card);
+    sc.card = card;
+    scenes.push(sc);
+    card.querySelector('.expand').addEventListener('click', () => {
+      const wide = card.classList.toggle('wide');
+      card.querySelector('.expand').textContent = wide ? 'Свернуть' : 'Крупнее';
+      if (wide) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }
+}
+
+function renderConcept() {
+  const tabs = document.getElementById('tabs');
+  tabs.replaceChildren(...CONCEPTS.map(c => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tab';
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', String(c.id === S.concept));
+    b.innerHTML = `<span class="n">${c.n}</span>${c.title}`;
+    b.addEventListener('click', () => { S.concept = c.id; renderConcept(); scenes.forEach(s => s.resetSystems()); store('concept', c.id); });
+    return b;
+  }));
+  const C = CONCEPTS.find(c => c.id === S.concept);
+  document.getElementById('conceptDesc').innerHTML = C.desc;
+  for (const sc of scenes) {
+    const d = sc.wx.d;
+    const p = sc.card.querySelector('.meta p');
+    p.textContent = C.id === 'combo' ? [d.shadow, d.minute, d.particles].join(' ') : d[C.id === 'minute' ? 'minute' : C.id];
+  }
+}
+
+function store(k, v) { try { localStorage.setItem('wx-lab.' + k, v); } catch {} }
+function restore(k) { try { return localStorage.getItem('wx-lab.' + k); } catch { return null; } }
+
+function fmtHour(h) { const hh = Math.floor(h) % 24, mm = Math.round((h % 1) * 60); return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`; }
+function syncOutputs() {
+  const sun = sunState(S.hour);
+  document.getElementById('hourOut').value = `${fmtHour(S.hour)} · ` + (sun.up ? `солнце ${Math.round(sun.elev)}°` : `ночь, луна ${Math.round(moonIllum() * 100)}%`);
+  const I = S.intensity;
+  document.getElementById('intenOut').value = I < .25 ? 'слабые' : I < .7 ? 'умеренные' : 'сильные';
+  const ms = Math.round(Math.abs(S.wind) * 14);
+  document.getElementById('windOut').value = ms < 1 ? 'штиль' : `${S.wind < 0 ? '←' : '→'} ${ms} м/с`;
+}
+
+function advanceMinute() {
+  S.m++;
+  if (S.m === 60) { S.m = 0; S.h = (S.h + 1) % 24; }
+  const txt = clockText(), anim = !!flags().trans;
+  scenes.forEach(s => s.setText(txt, anim && s.visible));
+}
+
+function initControls() {
+  const hour = document.getElementById('hour'), inten = document.getElementById('inten'), wind = document.getElementById('wind');
+  hour.value = S.hour;
+  hour.addEventListener('input', () => { S.hour = +hour.value; syncOutputs(); });
+  inten.addEventListener('input', () => { S.intensity = +inten.value; syncOutputs(); });
+  wind.addEventListener('input', () => { S.wind = +wind.value; syncOutputs(); });
+  document.getElementById('tick').addEventListener('click', advanceMinute);
+  document.getElementById('auto').addEventListener('change', e => { S.auto = e.target.checked; });
+  const pause = document.getElementById('pause');
+  const setPaused = v => { S.paused = v; pause.textContent = v ? 'Продолжить' : 'Пауза'; pause.classList.toggle('on', v); };
+  pause.addEventListener('click', () => { setPaused(!S.paused); document.getElementById('rm').hidden = true; });
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { setPaused(true); document.getElementById('rm').hidden = false; }
+
+  const theme = document.getElementById('theme');
+  const applyTheme = v => {
+    if (v === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = v;
+    theme.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+    scenes.forEach(s => s.layout());
+  };
+  theme.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { applyTheme(b.dataset.v); store('theme', b.dataset.v); } });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => scenes.forEach(s => s.layout()));
+  applyTheme(restore('theme') || 'auto');
+
+  const weight = document.getElementById('weight');
+  const applyWeight = v => {
+    S.weight = v;
+    weight.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+    scenes.forEach(s => s.layout());
+  };
+  weight.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { applyWeight(b.dataset.v); store('weight', b.dataset.v); } });
+  applyWeight(['300', '500', '700'].includes(restore('weight')) ? restore('weight') : '300');
+  syncOutputs();
+}
+
+/* ================= boot ================= */
+S.concept = CONCEPTS.some(c => c.id === restore('concept')) ? restore('concept') : 'combo';
+buildCards();
+initControls();
+renderConcept();
+
+const ro = new ResizeObserver(entries => {
+  for (const e of entries) scenes.find(s => s.canvas === e.target)?.layout();
+});
+const io = new IntersectionObserver(entries => {
+  for (const e of entries) { const s = scenes.find(s => s.card === e.target); if (s) s.visible = e.isIntersecting; }
+}, { rootMargin: '100px' });
+scenes.forEach(s => { ro.observe(s.canvas); io.observe(s.card); });
+
+setInterval(() => { if (S.auto && !S.paused && !document.hidden) advanceMinute(); }, 5000);
+
+let last = now();
+function loop() {
+  const t = now(), dt = Math.min(.05, t - last);
+  last = t;
+  if (!S.paused) for (const s of scenes) if (s.visible) s.frame(t, dt);
+  requestAnimationFrame(loop);
+}
+// Draw one still frame for every scene so the page is complete even when paused.
+scenes.forEach(s => s.frame(now(), 0));
+requestAnimationFrame(loop);
+</script>

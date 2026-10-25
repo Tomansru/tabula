@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#182335">
+  <title>Tabula · Дыхание неба</title>
+  <link rel="icon" href="../icons/icon32.png">
+  <link rel="stylesheet" href="daylight/style.css">
+</head>
+<body>
+  <canvas id="atmosphere" aria-hidden="true"></canvas>
+  <canvas id="stars" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+  <header class="masthead">
+    <a class="brand" href="../newtab.html">tabula<span>Дыхание неба / 01</span></a>
+    <div class="header-actions"><span id="placeLabel">Белград</span><button id="settingsButton" aria-haspopup="dialog" aria-label="Настроить небо"><svg viewBox="0 0 24 24"><path d="M4 7h8m4 0h4M4 17h3m4 0h9"/><circle cx="14" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button></div>
+  </header>
+  <main id="home">
+    <div class="hero">
+      <p class="eyebrow" id="greeting">Никуда не спешить</p>
+      <time id="clock">17:30</time>
+      <p id="dateLabel"></p>
+      <form id="search" role="search" action="https://duckduckgo.com/" method="get">
+        <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+        <input name="q" aria-label="Поиск в интернете" placeholder="Найти что-нибудь хорошее" autocomplete="off">
+        <kbd>↵</kbd>
+      </form>
+    </div>
+    <nav class="bookmarks" aria-label="Закладки">
+      <a href="https://github.com"><span aria-hidden="true">G</span>GitHub</a>
+      <a href="https://mail.google.com"><span aria-hidden="true">П</span>Почта</a>
+      <a href="https://youtube.com"><span aria-hidden="true">Y</span>YouTube</a>
+      <a href="https://chatgpt.com"><span aria-hidden="true">C</span>ChatGPT</a>
+      <a href="https://claude.ai"><span aria-hidden="true">C</span>Claude</a>
+    </nav>
+  </main>
+  <section class="transport" aria-label="Исследовать время суток">
+    <div class="transport-top">
+      <div class="phase"><i></i><span id="phaseLabel">Золотой час</span><span class="separator">/</span><output id="timeLabel">17:30</output></div>
+      <div class="playback"><button id="live" aria-pressed="false">Сейчас</button><button id="play" aria-pressed="false">▶ Прожить день</button><select id="speed" aria-label="Скорость времени"><option value="240">24 ч / 6 мин</option><option value="720" selected>24 ч / 2 мин</option><option value="1440">24 ч / 1 мин</option></select><button id="hideUI" aria-pressed="false">Только небо</button></div>
+    </div>
+    <input id="timeline" type="range" min="0" max="1439.99" step="0.1" value="1050" aria-label="Время суток">
+    <div class="ticks" aria-hidden="true"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+    <div class="transport-bottom"><div class="moments" id="moments"><button data-moment="night">Ночь</button><button data-moment="dawn">Рассвет</button><button data-moment="sunrise">Восход</button><button data-moment="noon">День</button><button data-moment="sunset">Закат</button><button data-moment="blue">Синий час</button></div><span id="sunTimes"></span></div>
+  </section>
+  <dialog id="settings" aria-labelledby="settingsTitle">
+    <header><div><p class="eyebrow">АТМОСФЕРА</p><h1 id="settingsTitle">Настроить небо</h1></div><button id="closeSettings" aria-label="Закрыть">×</button></header>
+    <label class="field">Локация солнца<select id="location"></select></label>
+    <label class="field">Дата<input type="date" id="date" min="2000-01-01" max="2100-12-31"></label>
+    <label class="field" for="sunStyle">Солнце<select id="sunStyle" aria-describedby="sunStyleNote"><option value="soft">Мягкий диск · текущий</option><option value="atmospheric">Атмосферное · разлив света</option></select></label>
+    <p class="note" id="sunStyleNote">Мягкий диск сохраняется в течение дня.</p>
+    <label class="field" for="sharpness">Чёткость диска <output id="sharpnessOut"></output><input id="sharpness" type="range" min="0" max="1" step="0.01" value="0.45"></label>
+    <label class="field" for="warmth">Сила света <output id="warmthOut"></output><input id="warmth" type="range" min="0.3" max="1.3" step="0.01" value="0.85"></label>
+    <label class="field" for="horizon">Высота горизонта <output id="horizonOut"></output><input id="horizon" type="range" min="0.55" max="0.78" step="0.01" value="0.68"></label>
+    <div class="rule"></div>
+    <label class="field">Звёздное небо<select id="starLocation"><option value="same">Как у солнца</option></select></label>
+    <label class="field">Направление взгляда<select id="bearing"><option value="pole">К небесному полюсу</option><option value="0">Север</option><option value="90">Восток</option><option value="180">Юг</option><option value="270">Запад</option></select></label>
+    <label class="field" for="starlight">Свет звёзд <output id="starlightOut"></output><input id="starlight" type="range" min="0.2" max="1.3" step="0.01" value="0.8"></label>
+    <p class="note">Солнце следует сезону и месту. Среди звёзд — ковш Большой Медведицы, Орион и Южный Крест с настоящими координатами. Полярная чуть заметнее, Сигма Октанта на юге остаётся слабой. Видимость зависит от времени и направления взгляда.</p>
+    <button class="reset" id="reset">Вернуть мягкий свет</button>
+  </dialog>
+  <script type="module" src="daylight/demo.js?v=3"></script>
+</body>
+</html>

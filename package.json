@@ -4,7 +4,7 @@
   "description": "No dependencies and no build step; this file only marks the .js files as ES modules for Node and names the two commands.",
   "type": "module",
   "scripts": {
-    "test": "node --test \"test/*.test.mjs\"",
+    "test": "node --test \"test/*.test.mjs\" \"lab/**/*.test.mjs\"",
     "pack": "sh scripts/pack.sh"
   }
 }

@@ -1,0 +1,718 @@
+<meta charset="utf-8">
+<title>Небо за часами</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: controls on top, then the whole new tab three times (light, dark, auto) under the same sky. */
+:root {
+  --bg: #f4f3ef;
+  --panel: #ffffff;
+  --fg: #1c1e23;
+  --muted: #626774;
+  --line: rgba(25, 25, 35, .1);
+  --accent: #c2622a;
+  --accent-ink: #ffffff;
+  --ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b0d11; --panel: #14171d; --fg: #eceef2; --muted: #9aa0ab; --line: rgba(255, 255, 255, .09);
+    --accent: #ffad6b; --accent-ink: #0b0d11; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b0d11; --panel: #14171d; --fg: #eceef2; --muted: #9aa0ab; --line: rgba(255, 255, 255, .09);
+  --accent: #ffad6b; --accent-ink: #0b0d11; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.5 var(--ui);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1500px; margin: 0 auto; display: grid; gap: 18px; }
+header.top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: end; }
+h1 { margin: 0; font: 600 30px/1.1 var(--display); letter-spacing: -.02em; }
+.lede { margin: 8px 0 0; color: var(--muted); max-width: 74ch; }
+
+.seg { display: inline-flex; flex-wrap: wrap; padding: 3px; border-radius: 9px; background: color-mix(in srgb, var(--fg) 6%, transparent); }
+.seg button { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0; border-radius: 7px; padding: 5px 11px; cursor: pointer; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--panel); color: var(--fg); box-shadow: 0 1px 3px rgba(0, 0, 0, .15); }
+.btn { font: inherit; font-size: 13px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+.btn.small { font-size: 12px; padding: 3px 9px; }
+.btn.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.controls {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.row1 { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+.row2 { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.row2 .lbl { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
+.row1 input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+.readout { font: 13px var(--mono); white-space: nowrap; }
+.readout b { font-weight: 600; }
+
+.scenes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.scene-wrap { display: grid; gap: 8px; min-width: 0; align-content: start; }
+.scene-head { display: flex; align-items: center; gap: 8px; padding: 0 4px; }
+.scene-head h2 { margin: 0; font: 600 13px var(--ui); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.scene-head .sp { flex: 1; }
+.scene-head .fs { display: none; }
+
+/* Solo: one theme large; fullscreen keeps the controls with it. */
+body.solo header.top, body.solo .notes, body.solo .scene-wrap:not(.active) { display: none; }
+body.solo .wrap { max-width: none; }
+body.solo .scenes { grid-template-columns: 1fr; }
+body.solo .scene-wrap.active .tab { width: min(100%, calc((100dvh - 230px) * 1.6)); justify-self: center; }
+body.solo .scene-wrap.active .scene-head .fs { display: inline-block; }
+.wrap:fullscreen { background: var(--bg); padding: 16px; overflow: auto; align-content: start; }
+.wrap:fullscreen .scene-wrap.active .tab { width: min(100%, calc((100dvh - 190px) * 1.6)); }
+
+/* ---------- a whole new tab in miniature ---------- */
+.tab {
+  position: relative;
+  container-type: inline-size;
+  aspect-ratio: 16 / 10;
+  max-width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  isolation: isolate;
+  font-family: var(--ui);
+  --t-field: rgba(255,255,255,.7); --t-border: rgba(25,25,35,.09); --t-tile: rgba(25,25,35,.07);
+}
+.tab .base { position: absolute; inset: 0; z-index: 0; }
+.tab .bl { background: radial-gradient(110% 80% at 22% 12%, #ffffff 0%, #f1eee8 60%, #e9e5dd 100%); }
+.tab .bd { background: radial-gradient(110% 80% at 22% 12%, #1d2230 0%, #11141b 60%, #0c0e13 100%); opacity: 0; }
+/* Background photo like the extension's: blur scaled to the miniature (100cqw ≈ a 1440px screen), then a dim layer in the theme colour. */
+.tab .img {
+  position: absolute; z-index: 0; display: none;
+  inset: calc(var(--blurN, 0) * -.14cqw);
+  background: var(--img) center / cover no-repeat;
+  filter: blur(calc(var(--blurN, 0) * .0694cqw));
+}
+.tab .dim { position: absolute; inset: 0; z-index: 0; display: none; background: var(--dimc); opacity: var(--dim, .35); }
+.tab.has-img .img, .tab.has-img .dim { display: block; }
+.tab.has-img .date, .tab.has-img .todo { text-shadow: 0 1px .6cqw var(--dimc); }
+.tab canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 1; }
+.row2 input[type="range"] { width: 140px; accent-color: var(--accent); vertical-align: middle; }
+.row2 output { font: 12.5px var(--mono); color: var(--muted); display: inline-block; min-width: 4ch; margin-left: 6px; }
+.tab .ui { position: absolute; inset: 0; z-index: 2; color: var(--t-fg); transition: color 1.2s ease; }
+.tab.boot .ui, .tab.boot .date { transition: none; }
+.tab.ink-light { --t-fg: #1c1e23; --t-sub: #555a64; --t-dim: #8b8f98; }
+.tab.ink-dark { --t-fg: #eceef2; --t-sub: #a6abb6; --t-dim: #6f7480; }
+.ui .clock {
+  position: absolute; left: 50%; top: 31%; translate: -50% -50%;
+  font: 300 11.5cqw/1 var(--display); letter-spacing: -.045em; font-variant-numeric: tabular-nums;
+}
+.ui .date { position: absolute; left: 50%; top: 43.5%; translate: -50% -50%; font-size: 1.45cqw; color: var(--t-sub); white-space: nowrap; transition: color 1.2s ease; }
+.ui .search {
+  position: absolute; left: 50%; top: var(--hy); translate: -50% -50%;
+  width: 36cqw; height: 3.6cqw; border-radius: 99px;
+  background: var(--t-field); border: 1px solid var(--t-border);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; gap: 1cqw; padding: 0 1.4cqw;
+  font-size: 1.3cqw; color: var(--t-dim);
+}
+.ui .search svg { width: 1.6cqw; height: 1.6cqw; flex: none; }
+.ui .tiles { position: absolute; left: 50%; top: 72%; translate: -50% -50%; display: flex; gap: 2.4cqw; }
+.ui .tiles i { width: 3.8cqw; aspect-ratio: 1; border-radius: 1.1cqw; background: var(--t-tile); }
+.ui .todo { position: absolute; right: 2.4cqw; top: 4cqw; width: 19cqw; display: grid; gap: .9cqw; font-size: 1.15cqw; }
+.ui .todo b { font: 600 1.8cqw var(--display); margin-bottom: .4cqw; }
+.ui .todo span { display: flex; gap: .8cqw; align-items: center; }
+.ui .todo span::before { content: ""; width: 1.2cqw; height: 1.2cqw; border-radius: .35cqw; border: 1.5px solid var(--t-dim); flex: none; }
+.ui .todo span.done { color: var(--t-dim); text-decoration: line-through; }
+.ui .gear { position: absolute; left: 1.6cqw; bottom: 1.6cqw; width: 1.8cqw; height: 1.8cqw; border-radius: .5cqw; border: 1.5px solid var(--t-dim); opacity: .6; }
+
+.notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.notes div { padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.notes h3 { margin: 0 0 4px; font: 600 14px var(--display); }
+.notes p { margin: 0; color: var(--muted); font-size: 13.5px; }
+
+@media (max-width: 1100px) {
+  .scenes { grid-template-columns: 1fr; }
+  .notes { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  header.top { grid-template-columns: 1fr; }
+  .row1 { grid-template-columns: 1fr; }
+  h1 { font-size: 24px; }
+}
+</style>
+
+<div class="wrap" id="wrap">
+  <header class="top">
+    <div>
+      <h1>Небо за часами</h1>
+      <p class="lede">Солнце встаёт слева от горизонта (строки поиска), проходит над часами и садится справа. Выше горизонта свет, ниже его короткое туманное отражение. Ночью звёзды медленно вращаются вокруг полюса. Третья сцена «Авто» сама переводит тему из дня в ночь.</p>
+    </div>
+    <div class="seg" id="pageTheme" role="group" aria-label="Тема страницы">
+      <button type="button" data-v="auto">Авто</button>
+      <button type="button" data-v="light">Светлая</button>
+      <button type="button" data-v="dark">Тёмная</button>
+    </div>
+  </header>
+
+  <section class="controls" aria-label="Время суток">
+    <div class="row1">
+      <button type="button" class="btn" id="play">▶ 36 часов за 90 с</button>
+      <input type="range" id="hour" min="0" max="36" step="0.02" aria-label="Время, 36 часов: от полуночи до полудня следующего дня">
+      <div class="readout" id="readout"></div>
+    </div>
+    <div class="row2">
+      <span><span class="lbl">Перейти</span><span class="seg" id="jumps"></span></span>
+    </div>
+    <div class="row2">
+      <span><span class="lbl">Место</span><span class="seg" id="places"></span></span>
+    </div>
+    <div class="row2">
+      <span><span class="lbl">Расписание</span>
+        <span class="seg" id="source">
+          <button type="button" data-v="weather" aria-pressed="true">Из погоды</button>
+          <button type="button" data-v="default" aria-pressed="false">По умолчанию 06:30–18:30</button>
+        </span>
+      </span>
+      <span class="readout" id="sunInfo"></span>
+    </div>
+    <div class="row2">
+      <span><span class="lbl">Фон</span>
+        <span class="seg" id="bgSeg">
+          <button type="button" data-v="none" aria-pressed="true">Без картинки</button>
+          <button type="button" data-v="mountains" aria-pressed="false">Горы</button>
+          <button type="button" data-v="city" aria-pressed="false">Город</button>
+          <button type="button" data-v="abstract" aria-pressed="false">Абстракция</button>
+          <button type="button" data-v="own" aria-pressed="false">Своё фото…</button>
+        </span>
+        <input type="file" accept="image/*" id="bgFile" hidden>
+      </span>
+      <span><span class="lbl">Затемнение</span><input type="range" id="dim" min="0" max="90" value="35" aria-label="Затемнение"><output id="dimOut">35%</output></span>
+      <span><span class="lbl">Размытие</span><input type="range" id="blur" min="0" max="20" value="0" aria-label="Размытие"><output id="blurOut">0px</output></span>
+    </div>
+  </section>
+
+  <section class="scenes" id="scenes"></section>
+
+  <section class="notes">
+    <div><h3>Солнце и горизонт</h3><p>Путь солнца строится по восходу и закату места: в расширении они приходят вместе с погодой, без локации или прогноза берётся 06:30–18:30. Полдень — ровно посередине дня, ночь растягивается или сжимается по сезону. У горизонта свет тёплый и приплюснутый, днём крупный, светлый и тёплый. Под строкой поиска свет быстро гаснет, остаётся лишь отражение, как от земли в лёгком тумане.</p></div>
+    <div><h3>Ночь</h3><p>Небо вращается вокруг полюса мира, его высота над горизонтом равна широте. В северном полушарии вращение идёт против часовой стрелки вокруг Полярной, в южном — по часовой стрелке вокруг пустой точки. На экваторе полюс лежит на горизонте. Ниже горизонта звёзд нет.</p></div>
+    <div><h3>Авто</h3><p>Днём светлая тема, ночью тёмная. Фон плавно перетекает в сумерках, текст переключается одним мягким переходом, чтобы не было момента, когда серый текст лежит на сером фоне.</p></div>
+  </section>
+</div>
+
+<script>
+'use strict';
+const DEFAULT_SUN = { sr: 6.5, ss: 18.5 }; // used when there is no location or no forecast
+const HY = .555;                           // horizon: the search bar's vertical position
+
+/* ---------- math ---------- */
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const mix = (a, b, t) => a.map((v, i) => Math.round(lerp(v, b[i], t)));
+const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${clamp(a).toFixed(3)})`;
+const fmt = h => { const m = Math.round((((h % 24) + 24) % 24) * 60) % 1440; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
+
+// e: sun elevation, 1 at solar noon, 0 on the horizon, negative below it.
+// Day (sunrise → sunset) maps to d 0…1 and night (sunset → next sunrise) to d 1…2,
+// so short winter days and long nights both stay continuous through midnight.
+function sunAt(h) {
+  const { sr, ss } = S.sun;
+  h = ((h % 24) + 24) % 24;
+  const d = h >= sr && h <= ss ? (h - sr) / (ss - sr)
+    : 1 + (((h - ss) % 24) + 24) % 24 / (24 - (ss - sr));
+  return { d: d > 1.5 ? d - 2 : d, e: Math.sin(Math.PI * d) };
+}
+
+// Sunrise/sunset from latitude, longitude and UTC offset (NOAA approximation, within a few minutes).
+// The extension gets these from the Open-Meteo forecast; the demo can't fetch, so it computes the same values.
+function solarTimes(lat, lon, tz, date = new Date()) {
+  const rad = Math.PI / 180;
+  const n = Math.round((date - new Date(date.getFullYear(), 0, 0)) / 864e5);
+  const g = 2 * Math.PI / 365 * (n - 1);
+  const eqt = 229.18 * (.000075 + .001868 * Math.cos(g) - .032077 * Math.sin(g) - .014615 * Math.cos(2 * g) - .040849 * Math.sin(2 * g));
+  const decl = .006918 - .399912 * Math.cos(g) + .070257 * Math.sin(g) - .006758 * Math.cos(2 * g) + .000907 * Math.sin(2 * g) - .002697 * Math.cos(3 * g) + .00148 * Math.sin(3 * g);
+  const cosH = Math.cos(90.833 * rad) / (Math.cos(lat * rad) * Math.cos(decl)) - Math.tan(lat * rad) * Math.tan(decl);
+  if (Math.abs(cosH) > 1) return null; // polar day or night
+  const H = Math.acos(cosH) / rad;
+  return { sr: (720 - 4 * (lon + H) - eqt) / 60 + tz, ss: (720 - 4 * (lon - H) - eqt) / 60 + tz };
+}
+
+const COL = {
+  violet: hex('#b08ad8'), pink: hex('#ff8fa3'), orange: hex('#ffa257'), gold: hex('#ffd48a'),
+  dayLight: hex('#ffe6a8'), dayDark: hex('#ffdcaa'),
+};
+// Soft star dot, pre-rendered once: stars read as small glows rather than crisp pixels.
+function starSprite(rgb) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+  g.addColorStop(0, `rgba(${rgb},1)`);
+  g.addColorStop(.25, `rgba(${rgb},.7)`);
+  g.addColorStop(.55, `rgba(${rgb},.15)`);
+  g.addColorStop(1, `rgba(${rgb},0)`);
+  x.fillStyle = g;
+  x.fillRect(0, 0, 32, 32);
+  return c;
+}
+const STAR_LIGHT = starSprite('255,255,255'); // white stars on the dark sky
+const STAR_DARK = starSprite('52,64,106');    // ink-blue stars on the light theme's dimmed sky
+// [name, latitude, longitude, UTC offset in late October]
+const PLACES = [['Рейкьявик', 64.1, -21.9, 0], ['Берлин', 52.5, 13.4, 2], ['Нью-Йорк', 40.7, -74, -4], ['Дубай', 25.2, 55.3, 4], ['Сингапур', 1.35, 103.8, 8], ['Рио', -22.9, -43.2, -3], ['Сидней', -33.9, 151.2, 11], ['Ушуайя', -54.8, -68.3, -3]];
+
+// dk: 0 light theme … 1 dark theme (the auto scene moves between them).
+function glowColor(e, dk) {
+  if (e < -.05) return mix(COL.violet, COL.pink, smooth(-.3, -.05, e));
+  if (e < .15) return mix(COL.pink, COL.orange, smooth(-.05, .15, e));
+  if (e < .45) return mix(COL.orange, COL.gold, smooth(.15, .45, e));
+  return mix(COL.gold, mix(COL.dayLight, COL.dayDark, dk), smooth(.45, .85, e));
+}
+
+function phaseName(h, e) {
+  const am = h < 12.5 && h > 2;
+  if (e < -.3) return 'ночь';
+  if (e < 0) return am ? 'рассвет' : 'сумерки';
+  if (e < .3) return am ? 'восход' : 'закат';
+  if (e > .92) return 'полдень';
+  return am ? 'утро' : 'день';
+}
+
+/* ---------- a scene ---------- */
+class Tab {
+  constructor(el, mode) {
+    this.el = el;
+    this.mode = mode; // 'light' | 'dark' | 'auto'
+    el.innerHTML = `<div class="base bl"></div><div class="base bd"></div><div class="img"></div><div class="dim"></div><canvas></canvas><div class="ui">
+      <div class="todo"><b>Сегодня</b><span class="done">Позвонить в банк</span><span>Купить кофе</span><span>Ревью PR</span></div>
+      <div class="clock">12:00</div>
+      <div class="date">Суббота, 24 октября · Неделя 43</div>
+      <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>Поиск</div>
+      <div class="tiles"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="gear"></div></div>`;
+    el.style.setProperty('--hy', HY * 100 + '%');
+    // No ink transition on the first frames, so the clock doesn't fade in from the wrong colour.
+    el.classList.add('boot');
+    this.frames = 0;
+    this.canvas = el.querySelector('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.glow = document.createElement('canvas');
+    this.gctx = this.glow.getContext('2d');
+    this.bd = el.querySelector('.bd');
+    this.clock = el.querySelector('.clock');
+    new ResizeObserver(() => this.size()).observe(el);
+  }
+
+  size() {
+    const r = this.el.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+    if (!r.width) return;
+    this.w = r.width; this.h = r.height;
+    for (const [cv, cx] of [[this.canvas, this.ctx], [this.glow, this.gctx]]) {
+      cv.width = Math.round(r.width * dpr);
+      cv.height = Math.round(r.height * dpr);
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    // Random sky in polar coordinates around the pole (which moves with latitude, so cover any position).
+    // Brightness follows a steep power law: lots of faint stars, a handful of bright ones.
+    const R = Math.hypot(this.w, this.h) * 1.05;
+    this.starScale = Math.max(1, this.w / 700);
+    this.stars = Array.from({ length: 360 }, () => {
+      const m = Math.pow(Math.random(), 2.6);
+      return {
+        r: Math.sqrt(Math.random()) * R, a0: Math.random() * Math.PI * 2,
+        s: (.5 + 1.3 * m) * this.starScale, al: .14 + .66 * m,
+        tw: Math.random() < .2, sp: .4 + Math.random() * 1.2, ph: Math.random() * 6.28,
+      };
+    });
+  }
+
+  render(hour, t) {
+    if (!this.w) return;
+    const c = this.ctx, w = this.w, h = this.h;
+    const { d, e } = sunAt(hour);
+    // Twilight in stages, mirrored at dusk:
+    // night → stars fade → sky lightens through the blue hour → a dawn band on the horizon → the sun rises from it.
+    const stars = 1 - smooth(-.3, -.12, e);
+    const darkSky = 1 - smooth(-.26, .02, e);
+    const blueHour = smooth(-.32, -.06, e);
+    const dawn = smooth(-.24, -.02, e) * (1 - smooth(.12, .4, e));
+    const sunUp = smooth(-.03, .08, e);
+    const dk = this.mode === 'dark' ? 1 : this.mode === 'light' ? 0 : 1 - smooth(-.14, .03, e);
+    this.bd.style.opacity = dk.toFixed(3);
+    this.el.style.setProperty('--dimc', rgba(mix(hex('#f3f1ec'), hex('#0b0d11'), dk), 1));
+    const inkDark = dk > .5;
+    this.el.classList.toggle('ink-dark', inkDark);
+    this.el.classList.toggle('ink-light', !inkDark);
+    this.el.style.setProperty('--t-field', `rgba(${mix([255, 255, 255], [24, 27, 34], dk)},.7)`);
+    this.el.style.setProperty('--t-border', inkDark ? 'rgba(255,255,255,.08)' : 'rgba(25,25,35,.09)');
+    this.el.style.setProperty('--t-tile', inkDark ? 'rgba(255,255,255,.07)' : 'rgba(25,25,35,.07)');
+
+    const hy = h * HY;
+    // Facing the sun: in the north it travels left to right, in the south right to left.
+    const along = lerp(.04, .96, clamp(d, -.12, 1.12));
+    const sx = (S.lat < 0 ? 1 - along : along) * w;
+    const sy = hy - e * hy * .92;
+    c.clearRect(0, 0, w, h);
+
+    // Sky above the horizon: deep night blue lightening into the blue hour, then gone by sunrise.
+    if (darkSky > .001) {
+      const top = mix(mix(hex('#b6bfda'), hex('#c8d1e8'), blueHour), mix(hex('#0b1230'), hex('#1b2a60'), blueHour), dk);
+      const hor = mix(mix(hex('#cad0e2'), hex('#dde2ef'), blueHour), mix(hex('#1a2550'), hex('#40528f'), blueHour), dk);
+      // Over a photo the night only darkens it, so the picture still shows through.
+      const a = lerp(.72, .93, dk) * darkSky * (this.el.classList.contains('has-img') ? .55 : 1);
+      const g = c.createLinearGradient(0, 0, 0, hy);
+      g.addColorStop(0, rgba(top, a));
+      g.addColorStop(1, rgba(hor, a));
+      c.fillStyle = g;
+      c.fillRect(0, 0, w, hy);
+      // Ground: the same sky dimmed a little, fading in under the horizon instead of a hard edge.
+      const gr = c.createLinearGradient(0, hy, 0, hy + h * .08);
+      gr.addColorStop(0, rgba(hor, a));
+      gr.addColorStop(1, rgba(mix(hor, mix(hex('#e4e7f0'), hex('#05070f'), dk), .5), a));
+      c.fillStyle = gr;
+      c.fillRect(0, hy, w, h - hy);
+      if (stars > .01) this.drawStars(t, stars * lerp(.6, .75, dk), dk, hour, hy);
+    }
+
+    const G = this.gctx;
+    G.clearRect(0, 0, w, h);
+    let lit = false;
+    // Dawn / dusk band along the horizon on the sun's side, before the sun shows.
+    if (dawn > .005) {
+      const col = glowColor(Math.min(e, .1), dk);
+      const bw = w * .75, bh = h * .085;
+      G.save();
+      G.translate(sx, hy);
+      G.scale(1, bh / bw);
+      const b = G.createRadialGradient(0, 0, 0, 0, 0, bw);
+      b.addColorStop(0, rgba(col, lerp(.75, .55, dk) * dawn));
+      b.addColorStop(.5, rgba(col, lerp(.28, .2, dk) * dawn));
+      b.addColorStop(1, rgba(col, 0));
+      G.fillStyle = b;
+      G.fillRect(-bw, -bw, bw * 2, bw * 2);
+      G.restore();
+      lit = true;
+    }
+    // The sun's light, rising out of the horizon: flat and warm when low, large and pale high up.
+    if (sunUp > .005) {
+      const col = glowColor(e, dk);
+      const low = 1 - smooth(0, .5, Math.max(e, 0));
+      const rx = w * lerp(.5, .55, low), ry = rx * lerp(.8, .38, low);
+      const a0 = lerp(lerp(.6, .62, low), lerp(.3, .38, low), dk) * sunUp;
+      G.save();
+      G.translate(sx, sy);
+      G.scale(1, ry / rx);
+      const g = G.createRadialGradient(0, 0, 0, 0, 0, rx);
+      g.addColorStop(0, rgba(col, a0));
+      g.addColorStop(.4, rgba(col, a0 * .5));
+      g.addColorStop(1, rgba(col, 0));
+      G.fillStyle = g;
+      G.fillRect(-rx, -rx, rx * 2, rx * 2);
+      G.restore();
+      // A soft bright core while the sun is low, so you can see it come up and go down.
+      const core = sunUp * (1 - smooth(.2, .55, e));
+      if (core > .005) {
+        const cr = w * .045;
+        const k = G.createRadialGradient(sx, sy, 0, sx, sy, cr);
+        k.addColorStop(0, rgba(mix(col, [255, 250, 235], .6), lerp(.85, .6, dk) * core));
+        k.addColorStop(1, rgba(col, 0));
+        G.fillStyle = k;
+        G.fillRect(sx - cr, sy - cr, cr * 2, cr * 2);
+      }
+      lit = true;
+    }
+    if (lit) {
+      // Below the horizon the light dies off within a few percent of the height.
+      G.globalCompositeOperation = 'destination-in';
+      const m = G.createLinearGradient(0, 0, 0, h);
+      m.addColorStop(0, '#000');
+      m.addColorStop(HY, '#000');
+      m.addColorStop(Math.min(1, HY + .045), 'rgba(0,0,0,0)');
+      G.fillStyle = m;
+      G.fillRect(0, 0, w, h);
+      G.globalCompositeOperation = 'source-over';
+      c.drawImage(this.glow, 0, 0, w, h);
+
+      // Ground in light mist: a soft, flattened, slightly greyer reflection under the horizon.
+      const near = 1 - smooth(.1, .7, Math.max(e, 0));
+      const ra = lerp(.42, .3, dk) * Math.max(dawn * .8, sunUp * lerp(.45, 1, near));
+      if (ra > .005) {
+        const rcol = mix(glowColor(e, dk), mix([235, 232, 226], [70, 74, 90], dk), .3);
+        const rrx = w * .5, rry = h * .1;
+        c.save();
+        c.beginPath();
+        c.rect(0, hy, w, h - hy);
+        c.clip();
+        c.translate(sx, hy);
+        c.scale(1, rry / rrx);
+        const r = c.createRadialGradient(0, 0, 0, 0, 0, rrx);
+        r.addColorStop(0, rgba(rcol, ra));
+        r.addColorStop(.5, rgba(rcol, ra * .35));
+        r.addColorStop(1, rgba(rcol, 0));
+        c.fillStyle = r;
+        c.fillRect(-rrx, -rrx, rrx * 2, rrx * 2);
+        c.restore();
+      }
+    }
+
+    // The clock: a faint shadow away from the sun by day, a warm edge near the horizon, a cool glow at night.
+    const cx = w / 2, cy = h * .31;
+    let dx = cx - sx, dy = cy - sy;
+    const n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n;
+    const sh = [];
+    if (e > 0) {
+      const k = smooth(0, .25, e) * (1 - e * .5);
+      const off = lerp(.025, .02, dk);
+      sh.push(`${(dx * off).toFixed(3)}em ${(dy * off).toFixed(3)}em .08em ${rgba(mix([70, 45, 20], [0, 0, 0], dk), lerp(.16, .55, dk) * k)}`);
+    }
+    const warm = Math.max(dawn, sunUp * (1 - smooth(0, .35, e)));
+    if (warm > .03) sh.push(`${(-dx * .01).toFixed(3)}em ${(-dy * .01).toFixed(3)}em .35em ${rgba(glowColor(e, dk), lerp(.45, .35, dk) * warm)}`);
+    if (stars > .05 && dk > .3) sh.push(`0 0 .4em rgba(170,190,255,${(.24 * stars * dk).toFixed(3)})`);
+    this.clock.style.textShadow = sh.join(',') || 'none';
+    this.clock.textContent = fmt(hour);
+    if (++this.frames === 3) this.el.classList.remove('boot');
+  }
+
+  // The sky turns around the celestial pole, whose height above the horizon equals the latitude:
+  // counter-clockwise around Polaris in the north, clockwise around an empty point in the south.
+  drawStars(t, k, dk, hour, hy) {
+    const c = this.ctx, w = this.w;
+    const north = S.lat >= 0;
+    const px = w * .5, py = hy - (Math.abs(S.lat) / 90) * hy * .95;
+    // 15° per hour of the demo clock, plus a gentle drift so the night is alive even when paused.
+    const rot = (north ? -1 : 1) * (hour * Math.PI * 2 / 24 + t * Math.PI * 2 / 480);
+    const spr = dk > .5 ? STAR_LIGHT : STAR_DARK;
+    for (const s of this.stars) {
+      const a = s.a0 + rot;
+      const x = px + Math.cos(a) * s.r, y = py + Math.sin(a) * s.r;
+      if (y >= hy || x < -6 || x > w + 6 || y < -6) continue;
+      // Stars sink into the haze near the horizon.
+      let al = s.al * k * smooth(0, hy * .18, hy - y);
+      if (s.tw) al *= .65 + .35 * Math.sin(t * s.sp + s.ph);
+      if (al < .01) continue;
+      const d = s.s * 3.2;
+      c.globalAlpha = al;
+      c.drawImage(spr, x - d / 2, y - d / 2, d, d);
+    }
+    if (north && py < hy) {
+      const d = 1.6 * 3.2 * this.starScale;
+      c.globalAlpha = .9 * k * smooth(0, hy * .18, hy - py);
+      c.drawImage(spr, px - d / 2, py - d / 2, d, d);
+    }
+    c.globalAlpha = 1;
+  }
+}
+
+/* ---------- scenes ---------- */
+const SCENES = [['light', 'Светлая тема'], ['dark', 'Тёмная тема'], ['auto', 'Авто: день светлый, ночь тёмная']];
+const scenesEl = document.getElementById('scenes');
+const tabs = SCENES.map(([mode, title]) => {
+  const wrap = document.createElement('div');
+  wrap.className = 'scene-wrap';
+  wrap.innerHTML = `<div class="scene-head"><h2>${title}</h2><span class="sp"></span>`
+    + `<button type="button" class="btn small fs">На весь экран</button><button type="button" class="btn small big">Крупно</button></div><div class="tab"></div>`;
+  scenesEl.append(wrap);
+  const tab = new Tab(wrap.querySelector('.tab'), mode);
+  const big = wrap.querySelector('.big');
+  big.addEventListener('click', () => {
+    const on = !wrap.classList.contains('active');
+    document.querySelectorAll('.scene-wrap').forEach(s => { s.classList.remove('active'); s.querySelector('.big').textContent = 'Крупно'; });
+    document.body.classList.toggle('solo', on);
+    if (on) { wrap.classList.add('active'); big.textContent = 'Все три'; }
+    else if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    window.scrollTo({ top: 0 });
+  });
+  wrap.querySelector('.fs').addEventListener('click', () => {
+    const el = document.getElementById('wrap');
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else el.requestFullscreen?.().catch(() => {});
+  });
+  return tab;
+});
+
+/* ---------- controls ---------- */
+const now = new Date();
+const S = { hour: now.getHours() + now.getMinutes() / 60, playing: false, lat: 52.5, place: 'Берлин', source: 'weather', sun: { ...DEFAULT_SUN } };
+// Same rule as the extension: the forecast's schedule when we have one, otherwise the default day.
+function updateSun() {
+  const p = PLACES.find(x => x[0] === S.place);
+  const got = S.source === 'weather' && p ? solarTimes(p[1], p[2], p[3]) : null;
+  S.sun = got ? { ...got, from: 'из погоды' } : { ...DEFAULT_SUN, from: S.source === 'weather' ? 'по умолчанию (полярный день/ночь)' : 'по умолчанию' };
+}
+updateSun();
+const slider = document.getElementById('hour');
+const readout = document.getElementById('readout');
+const sunInfo = document.getElementById('sunInfo');
+const play = document.getElementById('play');
+slider.value = S.hour;
+slider.addEventListener('input', () => { S.hour = +slider.value; });
+play.addEventListener('click', () => {
+  S.playing = !S.playing;
+  play.classList.toggle('on', S.playing);
+  play.textContent = S.playing ? '❚❚ Пауза' : '▶ 36 часов за 90 с';
+});
+
+// Jumps follow the current place's schedule.
+const JUMPS = [
+  ['Ночь', () => 2], ['Рассвет', s => s.sr - .6], ['Восход', s => s.sr + .25], ['Утро', s => s.sr + 2.5],
+  ['Полдень', s => (s.sr + s.ss) / 2], ['День', s => s.ss - 2.5], ['Закат', s => s.ss - .25], ['Сумерки', s => s.ss + .6],
+  ['Вечер', s => s.ss + 2.5], ['Полночь', () => 24], ['Рассвет +1', s => 24 + s.sr - .6], ['Полдень +1', () => 36],
+];
+document.getElementById('jumps').replaceChildren(...JUMPS.map(([name, at]) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = name;
+  b.addEventListener('click', () => { S.hour = clamp(at(S.sun), 0, 36); slider.value = S.hour; });
+  return b;
+}));
+
+const sourceSeg = document.getElementById('source');
+sourceSeg.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  S.source = b.dataset.v;
+  sourceSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  updateSun();
+});
+
+const placesSeg = document.getElementById('places');
+placesSeg.replaceChildren(...PLACES.map(([name, lat, lon, tz]) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = `${name} ${Math.abs(lat).toFixed(0)}°${lat < 0 ? ' ю.ш.' : ' с.ш.'}`;
+  b.dataset.name = name;
+  b.addEventListener('click', () => {
+    S.lat = lat; S.place = name;
+    updateSun();
+    placesSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.name === name)));
+  });
+  b.setAttribute('aria-pressed', String(name === S.place));
+  return b;
+}));
+
+/* ---------- background photo ---------- */
+// The page can't load images from the web, so the presets are painted here once and kept as JPEG data.
+function paint(draw) {
+  const c = document.createElement('canvas');
+  c.width = 1600; c.height = 1000;
+  draw(c.getContext('2d'), 1600, 1000);
+  return c.toDataURL('image/jpeg', .88);
+}
+const ridge = (x, seed, amp) => Math.sin(x * .004 + seed) * amp + Math.sin(x * .011 + seed * 2.3) * amp * .45 + Math.sin(x * .029 + seed * 5.1) * amp * .18;
+const PRESETS = {
+  // Bright midday landscape: the hardest case for legibility.
+  mountains: () => paint((x, W, H) => {
+    const sky = x.createLinearGradient(0, 0, 0, H * .6);
+    sky.addColorStop(0, '#3f8fd8'); sky.addColorStop(1, '#bfe4f8');
+    x.fillStyle = sky; x.fillRect(0, 0, W, H);
+    const sun = x.createRadialGradient(W * .78, H * .18, 0, W * .78, H * .18, 260);
+    sun.addColorStop(0, 'rgba(255,252,230,1)'); sun.addColorStop(.15, 'rgba(255,245,210,.9)'); sun.addColorStop(1, 'rgba(255,245,210,0)');
+    x.fillStyle = sun; x.fillRect(0, 0, W, H);
+    [['#a9bfd6', .42, 90, 1], ['#7d9cba', .5, 80, 2], ['#4f7a6a', .6, 60, 3], ['#3e7d3a', .7, 40, 4]].forEach(([col, base, amp, s]) => {
+      x.fillStyle = col; x.beginPath(); x.moveTo(0, H);
+      for (let px = 0; px <= W; px += 8) x.lineTo(px, H * base - Math.abs(ridge(px, s, amp)) * (s < 3 ? 2.2 : 1));
+      x.lineTo(W, H); x.fill();
+    });
+    const field = x.createLinearGradient(0, H * .75, 0, H);
+    field.addColorStop(0, '#79c04f'); field.addColorStop(1, '#4e9a35');
+    x.fillStyle = field; x.fillRect(0, H * .78, W, H * .22);
+  }),
+  // Dusky skyline with lit windows: dark, high-contrast detail.
+  city: () => paint((x, W, H) => {
+    const sky = x.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#3b2f6b'); sky.addColorStop(.45, '#c4577a'); sky.addColorStop(.7, '#ff9a62'); sky.addColorStop(1, '#ffc27a');
+    x.fillStyle = sky; x.fillRect(0, 0, W, H);
+    let px = 0;
+    while (px < W) {
+      const bw = 50 + Math.random() * 110, bh = H * (.25 + Math.random() * .45);
+      x.fillStyle = `hsl(${250 + Math.random() * 20} 25% ${10 + Math.random() * 8}%)`;
+      x.fillRect(px, H - bh, bw, bh);
+      for (let wy = H - bh + 14; wy < H - 10; wy += 22) for (let wx = px + 8; wx < px + bw - 10; wx += 16)
+        if (Math.random() < .35) { x.fillStyle = `rgba(255,${200 + Math.random() * 40},${120 + Math.random() * 60},${.6 + Math.random() * .4})`; x.fillRect(wx, wy, 7, 10); }
+      px += bw + Math.random() * 6;
+    }
+  }),
+  // Busy, saturated blobs: a worst case for text over a photo.
+  abstract: () => paint((x, W, H) => {
+    x.fillStyle = '#ffd166'; x.fillRect(0, 0, W, H);
+    for (let i = 0; i < 46; i++) {
+      const cx = Math.random() * W, cy = Math.random() * H, r = 60 + Math.random() * 220;
+      const g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, `hsla(${Math.random() * 360} 90% 60% / .9)`); g.addColorStop(1, `hsla(${Math.random() * 360} 90% 60% / 0)`);
+      x.fillStyle = g; x.fillRect(cx - r, cy - r, r * 2, r * 2);
+    }
+  }),
+};
+const presetCache = {};
+const bgSeg = document.getElementById('bgSeg');
+const bgFile = document.getElementById('bgFile');
+let ownUrl = null;
+function setBg(kind, url) {
+  const src = kind === 'none' ? null : kind === 'own' ? url : (presetCache[kind] ||= PRESETS[kind]());
+  tabs.forEach(tb => {
+    tb.el.classList.toggle('has-img', !!src);
+    if (src) tb.el.style.setProperty('--img', `url("${src}")`);
+  });
+  bgSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === kind)));
+}
+bgSeg.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.v === 'own') bgFile.click(); else setBg(b.dataset.v);
+});
+bgFile.addEventListener('change', () => {
+  const f = bgFile.files[0];
+  bgFile.value = '';
+  if (!f) return;
+  if (ownUrl) URL.revokeObjectURL(ownUrl);
+  ownUrl = URL.createObjectURL(f);
+  setBg('own', ownUrl);
+});
+const dimIn = document.getElementById('dim'), blurIn = document.getElementById('blur');
+const applyDimBlur = () => {
+  tabs.forEach(tb => { tb.el.style.setProperty('--dim', dimIn.value / 100); tb.el.style.setProperty('--blurN', blurIn.value); });
+  document.getElementById('dimOut').value = dimIn.value + '%';
+  document.getElementById('blurOut').value = blurIn.value + 'px';
+};
+dimIn.addEventListener('input', applyDimBlur);
+blurIn.addEventListener('input', applyDimBlur);
+applyDimBlur();
+
+const themeSeg = document.getElementById('pageTheme');
+function applyTheme(v) {
+  if (v === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = v;
+  themeSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+  try { localStorage.setItem('sky-lab.theme', v); } catch {}
+}
+themeSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (b) applyTheme(b.dataset.v); });
+let saved = null;
+try { saved = localStorage.getItem('sky-lab.theme'); } catch {}
+applyTheme(['auto', 'light', 'dark'].includes(saved) ? saved : 'auto');
+
+/* ---------- loop ---------- */
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let last = performance.now() / 1000;
+function frame() {
+  const t = performance.now() / 1000, dt = Math.min(.1, t - last);
+  last = t;
+  if (S.playing) { S.hour = (S.hour + dt * 24 / 60) % 36; slider.value = S.hour; }
+  const { e } = sunAt(S.hour);
+  readout.innerHTML = `<b>${fmt(S.hour)}</b>${S.hour >= 24 ? ' (след. день)' : ''} · ${phaseName(S.hour % 24, e)} · солнце ${Math.round(e * 62)}°`;
+  sunInfo.textContent = `восход ${fmt(S.sun.sr)} · закат ${fmt(S.sun.ss)} · ${S.sun.from}`;
+  for (const tb of tabs) if (tb.el.offsetParent) tb.render(S.hour, reduce ? 0 : t);
+  requestAnimationFrame(frame);
+}
+frame();
+</script>

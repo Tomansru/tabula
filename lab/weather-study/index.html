@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Tabula · Погода в небе</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="sky.js" type="module"></script>
+</head>
+<body>
+<main id="lab">
+  <header>
+    <div><div class="eyebrow">TABULA / ЭТЮД 02 · НОВАЯ ВЕРСИЯ</div><h1>Небо. Погода. Время.</h1>
+      <p class="intro">Облака ловят свет солнца, капли отражают цвет неба, а погода касается самих часов. Одна атмосфера — от первого света до глубокой ночи.</p></div>
+    <div class="segment" id="page-theme" aria-label="Тема страницы" role="group">
+      <button data-theme="system" aria-pressed="true">Авто</button><button data-theme="light" aria-pressed="false">Светлая</button><button data-theme="dark" aria-pressed="false">Тёмная</button>
+    </div>
+  </header>
+  <section class="controls" aria-label="Управление погодной сценой">
+    <div class="transport"><button id="play" class="button play" aria-pressed="false">▶ Прогон суток</button>
+      <label class="timeline"><span class="sr-only">Время от полуночи до полудня следующего дня</span><input id="time" type="range" min="0" max="36" step="0.005" value="9"><span class="ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>00:00 +1</span><span>12:00 +1</span></span></label>
+      <div class="time-readout"><output id="readout">09:00</output><span id="phase"></span></div>
+    </div>
+    <div class="control-row"><span class="label">Погода</span><div id="weather" class="segment wrap" aria-label="Погодные условия" role="group" aria-busy="false"></div></div>
+    <div class="weather-description"><span id="weather-note"></span><label class="motion-toggle"><input id="weather-motion" type="checkbox" checked> Движение погоды</label></div>
+    <div class="control-row moment-controls"><span class="label">Момент</span><div id="moments" class="segment wrap"></div>
+      <label class="speed">36 часов за <select id="duration" aria-label="Скорость воспроизведения"><option value="45">45 с</option><option value="90" selected>90 с</option><option value="180">180 с</option></select></label>
+    </div>
+    <div class="control-row geo-controls"><label class="label" for="geo">Гео</label><select id="geo" aria-label="Город для расчёта положения солнца"></select><output id="geo-info"></output></div>
+    <div class="control-row sun-controls"><span class="label">Солнце</span>
+      <label class="sun-sharpness" for="sun-sharpness"><span>Чёткость</span><span class="range-end">Пятно света</span><input id="sun-sharpness" type="range" min="0" max="100" step="1" value="65"><span class="range-end">Чёткий диск</span><output id="sun-sharpness-value" for="sun-sharpness">65%</output></label>
+      <div class="clock-tools"><label class="motion-toggle"><input id="clock-effects" type="checkbox" checked> Погода на часах</label><button class="button" id="next-minute" title="Остановить прогон и показать смену минуты">+1 мин</button><button class="button" id="next-hour" title="Остановить прогон и показать смену часа">+1 час</button></div>
+    </div>
+  </section>
+  <section class="scenes" id="scenes" aria-label="Три темы новой вкладки"></section>
+  <footer class="notes">
+    <article><span>01 / СВЕТ</span><h2>Небо освещает погоду</h2><p>Небольшие облака остаются вверху и по краям. Их освещённая сторона следует за солнцем: золотая на закате, прохладная ночью. Проходя перед солнцем, облако приглушает и его свет, и блик на часах.</p></article>
+    <article><span>02 / ВОЗДУХ</span><h2>Горизонту есть чем дышать</h2><p>Погода меняет прозрачность и оттенки самого неба. В тумане свет рассеивается, в дождь становится прохладнее; осадки подхватывают его цвет. Горизонт остаётся мягким и свободным.</p></article>
+    <article><span>03 / ВРЕМЯ</span><h2>Цифры чувствуют погоду</h2><p>В дождь цифры блестят и стекают при смене, в снег — покрываются инеем и мягко оседают, в туман — растворяются. Попробуйте «+1 мин» или «+1 час», чтобы рассмотреть переход.</p></article>
+  </footer>
+  <div class="bottom"><span>Canvas 2D · без библиотек · условия задаются вручную</span><span id="render-info"></span></div>
+</main>
+</body>
+</html>
