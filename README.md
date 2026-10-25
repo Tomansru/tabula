@@ -83,6 +83,7 @@ js/i18n.js         translations
 docs/brand.html    the brand book, reading live values from css/tokens.css
 test/              node:test checks: package and manifest, translations, pure logic
 scripts/pack.sh    builds dist/tabula-<version>.zip with only the extension's files
+store/             Chrome Web Store listing: texts in five languages, privacy answers, screenshots and promo tiles
 ```
 
 ### Tests and packaging
@@ -102,7 +103,7 @@ and keeps the zip as a build artifact.
 1. Raise `version` in `manifest.json`.
 2. Push a tag with the same version: `git tag v1.0.1 && git push origin v1.0.1`.
 3. CI checks that the tag matches the manifest, then creates a GitHub release with the zip attached.
-4. Upload that zip in the Chrome Web Store dashboard.
+4. Upload that zip in the Chrome Web Store dashboard (see [store/README.md](store/README.md)).
 
 ### Adding a theme
 

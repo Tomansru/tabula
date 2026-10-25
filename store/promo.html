@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tabula · store promo</title>
+  <!-- Promo images for the Chrome Web Store: promo.html?w=440&h=280 (small tile) or ?w=1400&h=560 (marquee).
+       The sky is painted by the extension's own "Breathing sky" engine at dusk in Belgrade. -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #1b2338; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", Inter, Roboto, sans-serif; color: #f1ece6; -webkit-font-smoothing: antialiased; }
+    canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+    .grain { position: fixed; inset: 0; opacity: .04; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.86' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23fff' filter='url(%23n)' opacity='.5' d='M0 0h180v180H0z'/%3E%3C/svg%3E"); }
+    .card { position: fixed; inset: 0; display: grid; align-content: center; text-shadow: 0 2px 24px rgb(8 12 28 / .35); }
+    .clock { font-weight: 250; letter-spacing: -.06em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .clock small { font-size: .17em; font-weight: 500; letter-spacing: .02em; margin-left: .12em; opacity: .7; }
+    .brand { font-weight: 600; letter-spacing: -.05em; }
+    .tag { font-weight: 500; text-transform: uppercase; letter-spacing: .16em; opacity: .82; }
+
+    /* small tile 440×280: the clock is the picture, the name under it */
+    .small .card { justify-items: center; text-align: center; gap: 14px; padding-top: 8px; }
+    .small .clock { font-size: 104px; }
+    .small .line { display: flex; align-items: baseline; gap: 12px; }
+    .small .brand { font-size: 26px; }
+    .small .tag { font-size: 11px; }
+
+    /* marquee 1400×560: words on the left, the clock on the right */
+    .large .card { grid-template-columns: 1fr auto; align-items: center; padding: 0 120px; gap: 80px; }
+    .large .brand { font-size: 84px; }
+    .large .tag { font-size: 17px; margin-top: 18px; }
+    .large .about { margin-top: 26px; font-size: 24px; line-height: 1.45; max-width: 560px; opacity: .9; }
+    .large .clock { font-size: 260px; }
+  </style>
+</head>
+<body>
+  <canvas id="atmosphere"></canvas><canvas id="stars"></canvas><div class="grain"></div>
+  <div class="card" id="card"></div>
+  <script type="module">
+    import { Sky } from '../js/themes/daylight/sky.js';
+    const q = new URLSearchParams(location.search);
+    const w = +q.get('w') || 440, h = +q.get('h') || 280, large = w / h > 2;
+    document.body.className = large ? 'large' : 'small';
+
+    const sky = new Sky(document.getElementById('atmosphere'), document.getElementById('stars'), { w, h });
+    sky.draw(Date.parse('2026-05-20T18:52:00Z'), {
+      sunStyle: 'atmospheric', sharpness: .8, warmth: 1, horizon: large ? .74 : .72, starlight: 1.1, bearing: 'pole',
+      place: { lat: 44.82, lon: 20.46 }, starPlace: null,
+    }, 0);
+
+    const clock = '8:52<small>PM</small>';
+    document.getElementById('card').innerHTML = large
+      ? `<div><div class="brand">tabula</div><div class="tag">A calm new tab</div>
+           <div class="about">A clock over a living sky, the weather, your bookmarks and today’s tasks. No trackers.</div></div>
+         <div class="clock">${clock}</div>`
+      : `<div class="clock">${clock}</div><div class="line"><span class="brand">tabula</span><span class="tag">A calm new tab</span></div>`;
+  </script>
+</body>
+</html>
