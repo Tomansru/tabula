@@ -136,7 +136,8 @@ export async function reverseGeocode(lat, lon) {
   return a.city || a.town || a.village || a.municipality || a.county || j.name || null;
 }
 
-// The widget in the left column. Its head mirrors the tasks' "Today" row: title on the left, high/low where the count is.
+// The widget in the left column. Its head is a title like the tasks' "Today"; the day's high/low sits with the place,
+// so a long title in any language ("Al otro lado de tu ventana") can take two lines without pushing anything out.
 export function renderWeather(btn) {
   btn.hidden = !settings.showWeather;
   if (btn.hidden) return;
@@ -144,8 +145,7 @@ export function renderWeather(btn) {
   const w = currentWeather();
   const r = Math.round;
   btn.removeAttribute('title');
-  const head = `<span class="wx-head-row"><span class="wx-title">${esc(t('outside'))}</span>`
-    + (w ? `<span class="tcount">↑${r(w.max)}° ↓${r(w.min)}°</span>` : '') + '</span>';
+  const head = `<span class="wx-head-row"><span class="wx-title">${esc(t('outside'))}</span></span>`;
   if (!loc || !w) {
     btn.innerHTML = head + `<span class="wx-set">${svg(ICONS.pin)}${esc(loc ? t('loadingWx') : t('setLocation'))}</span>`;
     return;
@@ -153,7 +153,7 @@ export function renderWeather(btn) {
   const now = `<span class="wx-now"><span class="wx-icon">${iconFor(w.code, w.isDay)}</span>`
     + `<span class="wx-temp">${r(w.temp)}°</span>`
     + `<span class="wx-meta"><span class="wx-desc">${esc(t(descKey(w.code)))}</span>`
-    + `<span class="wx-sub">${esc(loc.name)}</span></span></span>`;
+    + `<span class="wx-sub">${esc(loc.name)} · ↑${r(w.max)}° ↓${r(w.min)}°</span></span></span>`;
   // Sunrise and sunset as one quiet line; the full sun path lives in the weather window.
   const sun = w.sr != null && w.ss != null
     ? `<span class="wx-sun"><span>${esc(t('sunrise', { t: hhmm(w.sr) }))}</span><span>${esc(t('sunset', { t: hhmm(w.ss) }))}</span></span>` : '';

@@ -166,7 +166,7 @@
       <header><h2>Карточки</h2><p>Погода и задачи — одна и та же карточка, поэтому они читаются как пара.</p></header>
       <ul class="rules">
         <li><b>Поля карточки</b> — <code>--s-4</code> сверху и снизу, <code>--s-3</code> по бокам; строки внутри отступают ещё на 10 px (место для подсветки при наведении). Текст начинается в 22–23 px от края.</li>
-        <li><b>Шапка</b> — заголовок <code>--t-title</code> слева (<i>Сегодня</i>, <i>За вашим окном</i>), справа короткое число <code>--t-small</code> (<i>0/1</i>, <i>↑14° ↓7°</i>).</li>
+        <li><b>Шапка</b> — заголовок <code>--t-title</code> (<i>Сегодня</i>, <i>За вашим окном</i>). Справа может стоять короткое число <code>--t-small</code> (<i>0/1</i>), но только если заголовок короткий; длинный заголовок переносится на вторую строку, поэтому у погоды ↑макс ↓мин стоят в строке с городом.</li>
         <li><b>Высота по содержимому.</b> Разделитель снизу появляется, только когда под ним что-то есть (история задач).</li>
         <li><b>Подложка</b> одинаковая у обеих и включается вместе («Настройки → Вид → Подложки у виджетов»).</li>
       </ul>
@@ -263,7 +263,7 @@
       ].map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td style="color:var(--fg-3)">${r[2]}</td></tr>`).join('');
 
       // A sample of the weather widget.
-      document.getElementById('demoWx').innerHTML = `<span class="wx-head-row"><span class="wx-title">${t('outside')}</span><span class="tcount">↑14° ↓7°</span></span><span class="wx-now"><span class="wx-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 9.5a4.25 4.25 0 0 1 0 8.5z"/></svg></span><span class="wx-temp">13°</span><span class="wx-meta"><span class="wx-desc">Пасмурно</span><span class="wx-sub">Berlin</span></span></span>`
+      document.getElementById('demoWx').innerHTML = `<span class="wx-head-row"><span class="wx-title">${t('outside')}</span></span><span class="wx-now"><span class="wx-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 9.5a4.25 4.25 0 0 1 0 8.5z"/></svg></span><span class="wx-temp">13°</span><span class="wx-meta"><span class="wx-desc">Пасмурно</span><span class="wx-sub">Berlin · ↑14° ↓7°</span></span></span>`
         + `<span class="wx-sun"><span>${t('sunrise', { t: '06:48' })}</span><span>${t('sunset', { t: '16:51' })}</span></span>`;
     }
     render();
