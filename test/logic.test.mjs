@@ -6,6 +6,7 @@ import { isoWeek, startOfWeek, ymd } from '../js/util.js';
 import { sunAt, sunDk } from '../js/sun.js';
 import { sunArc, sunLeft, localNow } from '../js/sunArc.js';
 import { setLang } from '../js/i18n.js';
+import { dayCaption } from '../js/captions.js';
 import { settings, migrateSettings } from '../js/store.js';
 
 // setLang() also sets <html lang>; give it an element to set.
@@ -56,6 +57,18 @@ test('time to sunset by day, to sunrise at night', () => {
   assert.equal(sunLeft(weather, 12.5), 'Sunset in 6 h 0 min');
   assert.equal(sunLeft(weather, 20.5), 'Sunrise in 10 h 0 min');
   assert.equal(localNow(weather).day, '2026-10-25');
+});
+
+test('the day caption: left until sunset, passed after it', () => {
+  setLang('ru');
+  const sunset = 16 + 50 / 60;
+  const at = (h, m) => dayCaption(new Date(2026, 9, 25, h, m), sunset).text;
+  assert.equal(at(0, 0), 'Осталось 100% дня');
+  assert.equal(at(8, 0), 'Осталось 67% дня');
+  assert.equal(at(16, 49), 'Осталось 30% дня');
+  assert.equal(at(16, 50), 'Прошло 70% дня');
+  assert.equal(at(23, 41), 'Прошло 98% дня');
+  assert.equal(at(23, 59), 'Прошло 99% дня', 'never 100% before midnight');
 });
 
 test('defaults for a new install', () => {
