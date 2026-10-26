@@ -50,3 +50,14 @@ test('every relative import between modules resolves', () => {
     }
   }
 });
+
+test('icons match the manifest sizes and the drawing script', async () => {
+  const { iconSvg } = await import('../scripts/icons.mjs');
+  for (const [size, file] of Object.entries(manifest.icons)) {
+    const png = readFileSync(join(root, file));
+    assert.equal(png.toString('ascii', 1, 4), 'PNG', `${file} is not a PNG`);
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [+size, +size], `${file} is not ${size}×${size}`);
+  }
+  assert.equal(read('docs/icon/tabula.svg'), iconSvg(128), 'docs/icon/tabula.svg is out of date: run node scripts/icons.mjs');
+  assert.equal(read('docs/icon/tabula-mark.svg'), iconSvg(128, { crop: true }), 'docs/icon/tabula-mark.svg is out of date: run node scripts/icons.mjs');
+});

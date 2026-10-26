@@ -9,6 +9,7 @@ Everything the store listing needs. Nothing in this folder goes into the extensi
 | `screenshots/*.jpg` | Five screenshots, 1280×800 |
 | `promo/small-tile-440x280.jpg` | Small promo tile |
 | `promo/marquee-1400x560.jpg` | Marquee promo tile (optional) |
+| `icons/icon128.png` (in the zip) | Store icon: drawn by `scripts/icons.mjs`, the art inside Chrome's 96 px safe area |
 | [`capture.mjs`](capture.mjs), [`promo.html`](promo.html) | Regenerate the images |
 
 ## Submitting a version
@@ -27,5 +28,7 @@ The screenshots are taken from the real page with demo data. The data uses gener
 ```bash
 node store/capture.mjs
 ```
+
+The promo tiles show the icon from `docs/icon/tabula.svg`; after changing it, run `node scripts/icons.mjs` first.
 
 The script needs Node 22+ and Google Chrome. To use another Chrome, pass its path as the first argument. It serves the repository itself on a free local port and runs Chrome headless with a throwaway profile. Edit `SHOTS` in the script to change the times, the data or what is open on screen.

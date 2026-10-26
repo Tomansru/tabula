@@ -70,6 +70,16 @@
     .components .btns { flex-wrap: wrap; }
     .demo-tiles { display: flex; gap: var(--s-2); }
     .demo-tiles .tile { width: 92px; }
+    /* icon */
+    .icon-sizes { display: flex; flex-wrap: wrap; align-items: end; gap: var(--s-6); }
+    .icon-sizes figure { margin: 0; display: grid; justify-items: center; gap: var(--s-2); }
+    .icon-sizes .pixels { image-rendering: pixelated; }
+    .icon-strip { display: grid; gap: var(--s-2); }
+    .icon-strip > div { display: flex; align-items: flex-end; height: 34px; padding: 0 8px; border-radius: var(--r-sm) var(--r-sm) 0 0; font: 12px system-ui, sans-serif; }
+    .icon-strip span { display: flex; align-items: center; gap: 8px; width: 160px; height: 28px; padding: 0 10px; border-radius: 8px 8px 0 0; }
+    .icon-strip .light { background: #dee1e6; color: #45474a; } .icon-strip .light .on { background: #fff; color: #202124; }
+    .icon-strip .dark { background: #202124; color: #9aa0a6; } .icon-strip .dark .on { background: #35363a; color: #e8eaed; }
+    .icon-strip i { width: 16px; height: 16px; border-radius: 50%; background: #9aa0a6; }
     @media (max-width: 640px) { .space-row { grid-template-columns: 48px 1fr; } .space-row .token:last-child { display: none; } .type-row { grid-template-columns: 1fr; gap: var(--s-1); } }
   </style>
 </head>
@@ -78,7 +88,7 @@
     <header class="book-head">
       <span class="eyebrow">Tabula · микро-брендбук</span>
       <h1>Немного места для дня</h1>
-      <p>Правила, по которым собирается домашний экран: кадр, отступы, скругления, шрифт, цвет и голос подписей.
+      <p>Правила, по которым собирается домашний экран: значок, кадр, отступы, скругления, шрифт, цвет и голос подписей.
         Все значения на этой странице читаются прямо из <code>css/tokens.css</code>: поменяли токен — поменялся и экран, и брендбук.</p>
       <div class="toolbar">
         <div class="seg" id="themeSeg"><button type="button" data-v="light">Светлая</button><button type="button" data-v="dark">Тёмная</button></div>
@@ -95,6 +105,29 @@
         <li><b>Небо — это фон, а не декор.</b> Текст на странице держит ореол (<code>--halo</code>), а не плашку; плашки — только у виджетов и по желанию.</li>
         <li><b>Один шрифт, пять размеров.</b> Иерархию задают размер, начертание и регистр, а не новые гарнитуры и цвета.</li>
         <li><b>Каждый отступ — из шкалы.</b> Никаких «13px потому что так легло».</li>
+      </ul>
+    </section>
+
+    <section class="chapter">
+      <header><h2>Значок</h2><p>Вкладка браузера, а в ней закат: небо новой вкладки и солнце на горизонте.
+        Силуэт вкладки говорит «это новая вкладка» ещё до того, как виден рисунок, а небо — что это Tabula.</p></header>
+      <div class="panel icon-sizes">
+        <figure><img src="icon/tabula.svg" width="128" height="128" alt=""><span class="token">128 · магазин</span></figure>
+        <figure><img src="../icons/icon48.png" width="48" height="48" alt=""><span class="token">48 · расширения</span></figure>
+        <figure><img src="../icons/icon32.png" width="32" height="32" alt=""><span class="token">32</span></figure>
+        <figure><img src="../icons/icon16.png" width="16" height="16" alt=""><span class="token">16 · вкладка</span></figure>
+        <figure><img class="pixels" src="../icons/icon16.png" width="64" height="64" alt=""><span class="token">16 под лупой</span></figure>
+      </div>
+      <div class="icon-strip">
+        <div class="light"><span><i></i>GitHub</span><span class="on"><img src="../icons/icon16.png" width="16" height="16" alt="">Новая вкладка</span></div>
+        <div class="dark"><span><i></i>GitHub</span><span class="on"><img src="../icons/icon16.png" width="16" height="16" alt="">Новая вкладка</span></div>
+      </div>
+      <ul class="rules">
+        <li><b>Форма</b> — вкладка Chrome: скруглённый верх и выгнутые «лапки», которыми она садится на полосу вкладок. Никаких плашек и квадратов вокруг: прозрачный фон.</li>
+        <li><b>Небо</b> сверху вниз: <code>#6c63d4 → #b77cc6 → #f08aa0 → #ffb070</code>, градиент кончается ровно на горизонте. <b>Земля</b> <code>#51449c → #3a3283</code>, <b>солнце</b> <code>#fff4d6</code>, ореол <code>#ffd9a0</code> на 35%.</li>
+        <li><b>Своя геометрия на каждый размер.</b> 16 px — без ореола и бликов, все края на целых пикселях; 32 добавляет ореол, 48 и 128 — блики на воде. 128 оставляет прозрачные поля магазина (рисунок около 96 px).</li>
+        <li><b>Файлы</b>: исходник <code>docs/icon/tabula.svg</code>, он же без полей для вёрстки — <code>tabula-mark.svg</code>; PNG в <code>icons/</code> делает <code>node scripts/icons.mjs</code>; руками PNG не правим. Отложенные эскизы — в <code>docs/icon/drafts/</code>.</li>
+        <li><b>Рядом с названием</b> значок стоит слева как первая буква: «лапками» на базовой линии, высотой с выносные <i>t, b, l</i> (0.74 em), отступ 0.2 em. Левый край рисунка — по краю текста под ним. Слово «tabula» — строчными.</li>
       </ul>
     </section>
 

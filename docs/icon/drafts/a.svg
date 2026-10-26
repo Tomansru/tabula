@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Tabula icon draft A: Вкладка с горизонтом</title>
+  <defs><linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6c63d4"/><stop offset=".62" stop-color="#f08aa0"/><stop offset="1" stop-color="#ffad66"/></linearGradient><clipPath id="ac"><path d="M6 116 C16 116 18 112 18 102 V36 Q18 18 36 18 H92 Q110 18 110 36 V102 C110 112 112 116 122 116 Z"/></clipPath></defs>
+  <path d="M6 116 C16 116 18 112 18 102 V36 Q18 18 36 18 H92 Q110 18 110 36 V102 C110 112 112 116 122 116 Z" fill="url(#a)"/>
+  <g clip-path="url(#ac)"><circle cx="64" cy="86" r="24" fill="#fff4d6"/><rect x="0" y="86" width="128" height="40" fill="#4b3f95"/></g>
+</svg>

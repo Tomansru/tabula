@@ -4,21 +4,15 @@
 //
 // Serves the repository on a local port, starts Chrome headless with an empty profile, freezes the clock at a
 // chosen moment in Belgrade, seeds settings, weather, tasks and bookmarks, and saves JPEGs (the store wants no alpha).
-// No dependencies: Node 22+ (for the global WebSocket) and an installed Chrome.
+// No dependencies: Node 22+ and an installed Chrome (see scripts/chrome.mjs).
 import { createServer } from 'node:http';
-import { readFile, mkdir, writeFile, rm, mkdtemp } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { join, extname, dirname } from 'node:path';
-import { tmpdir } from 'node:os';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { launch, sleep } from '../scripts/chrome.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, 'store');
-const CHROME = process.argv[2] || {
-  darwin: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  linux: 'google-chrome',
-  win32: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
-}[process.platform];
 
 /* ---------- demo data ---------- */
 
@@ -122,33 +116,7 @@ const base = `http://127.0.0.1:${server.address().port}`;
 
 /* ---------- Chrome over the DevTools protocol ---------- */
 
-const profile = await mkdtemp(join(tmpdir(), 'tabula-capture-'));
-const chrome = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
-  '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-device-scale-factor=1', 'about:blank']);
-const wsUrl = await new Promise((resolve, reject) => {
-  let log = '';
-  chrome.stderr.on('data', d => { log += d; const m = log.match(/ws:\/\/\S+/); if (m) resolve(m[0]); });
-  chrome.on('exit', code => reject(new Error(`Chrome exited (${code}):\n${log}`)));
-});
-const ws = new WebSocket(wsUrl);
-await new Promise(r => ws.addEventListener('open', r, { once: true }));
-let nextId = 0;
-const pending = new Map(), listeners = [];
-ws.addEventListener('message', e => {
-  const m = JSON.parse(e.data);
-  if (m.id && pending.has(m.id)) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.reject(new Error(m.error.message)) : p.resolve(m.result); }
-  else listeners.forEach(fn => fn(m));
-});
-const send = (method, params = {}, sessionId) => new Promise((resolve, reject) => {
-  const id = ++nextId;
-  pending.set(id, { resolve, reject });
-  ws.send(JSON.stringify({ id, method, params, sessionId }));
-});
-const once = (method, sessionId) => new Promise(r => {
-  const fn = m => { if (m.method === method && m.sessionId === sessionId) { listeners.splice(listeners.indexOf(fn), 1); r(m.params); } };
-  listeners.push(fn);
-});
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const { send, once, close } = await launch(process.argv[2]);
 
 async function capture({ url, w, h, script, run, file, settle = 1800 }) {
   const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
@@ -179,8 +147,6 @@ try {
     await capture({ url: `${base}/store/promo.html?w=${p.w}&h=${p.h}`, w: p.w, h: p.h, file: p.file, settle: 800 });
   }
 } finally {
-  ws.close();
-  chrome.kill();
+  await close();
   server.close();
-  await rm(profile, { recursive: true, force: true }).catch(() => {});
 }

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Tabula icon draft C: Вкладка с плюсом</title>
+  <defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7b6fdc"/><stop offset=".62" stop-color="#e98aa8"/><stop offset="1" stop-color="#ffa760"/></linearGradient></defs>
+  <path d="M6 116 C16 116 18 112 18 102 V36 Q18 18 36 18 H92 Q110 18 110 36 V102 C110 112 112 116 122 116 Z" fill="url(#c)"/>
+  <path d="M64 50 V94 M42 72 H86" stroke="#fff" stroke-width="13" stroke-linecap="round"/>
+</svg>

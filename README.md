@@ -1,4 +1,4 @@
-# Tabula
+# <img src="docs/icon/tabula.svg" width="40" height="40" alt="" align="top"> Tabula
 
 A calm, fast new tab page for Chrome. No frameworks, no build step, no trackers.
 
@@ -81,8 +81,10 @@ js/bookmarks.js    tiles, drag & drop, high-res icon discovery
 js/settings.js     settings drawer, export/import
 js/i18n.js         translations
 docs/brand.html    the brand book, reading live values from css/tokens.css
+docs/icon/         the icon's source SVG and the drafts that were not taken
 test/              node:test checks: package and manifest, translations, pure logic
 scripts/pack.sh    builds dist/tabula-<version>.zip with only the extension's files
+scripts/icons.mjs  draws the icon and renders icons/icon{16,32,48,128}.png through headless Chrome
 store/             Chrome Web Store listing: texts in five languages, privacy answers, screenshots and promo tiles
 ```
 

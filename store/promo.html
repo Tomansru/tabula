@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <title>Tabula · store promo</title>
   <!-- Promo images for the Chrome Web Store: promo.html?w=440&h=280 (small tile) or ?w=1400&h=560 (marquee).
+       The icon is docs/icon/tabula-mark.svg, drawn by scripts/icons.mjs.
        The sky is painted by the extension's own "Breathing sky" engine at dusk in Belgrade. -->
   <link rel="stylesheet" href="../css/tokens.css">
   <style>
@@ -15,6 +16,8 @@
     .clock { font-weight: 250; letter-spacing: -.06em; line-height: 1; font-variant-numeric: tabular-nums; }
     .clock small { font-size: .17em; font-weight: 500; letter-spacing: .02em; margin-left: .12em; opacity: .7; }
     .brand { font-weight: 600; letter-spacing: -.05em; }
+    /* the icon stands on the baseline like a letter, as tall as the ascenders of "tabula" */
+    .brand img { height: .74em; margin-right: .2em; vertical-align: baseline; filter: drop-shadow(0 2px 14px rgb(8 12 28 / .3)); }
     .tag { font-weight: 500; text-transform: uppercase; letter-spacing: .16em; opacity: .82; }
 
     /* small tile 440×280: the clock is the picture, the name under it */
@@ -48,11 +51,12 @@
     }, 0);
 
     const clock = '8:52<small>PM</small>';
+    const brand = '<span class="brand"><img src="../docs/icon/tabula-mark.svg" alt="">tabula</span>';
     document.getElementById('card').innerHTML = large
-      ? `<div><div class="brand">tabula</div><div class="tag">A calm new tab</div>
+      ? `<div>${brand}<div class="tag">A calm new tab</div>
            <div class="about">A clock over a living sky, the weather, your bookmarks and today’s tasks. No trackers.</div></div>
          <div class="clock">${clock}</div>`
-      : `<div class="clock">${clock}</div><div class="line"><span class="brand">tabula</span><span class="tag">A calm new tab</span></div>`;
+      : `<div class="clock">${clock}</div><div class="line">${brand}<span class="tag">A calm new tab</span></div>`;
   </script>
 </body>
 </html>

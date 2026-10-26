@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Tabula icon draft B: Окно новой вкладки</title>
+  <defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6c63d4"/><stop offset=".62" stop-color="#f08aa0"/><stop offset="1" stop-color="#ffad66"/></linearGradient><clipPath id="bc"><rect x="8" y="8" width="112" height="112" rx="26"/></clipPath></defs>
+  <g clip-path="url(#bc)"><rect x="0" y="0" width="128" height="128" fill="url(#b)"/>
+  <rect x="0" y="0" width="128" height="40" fill="#2a2f55"/>
+  <path d="M14 40 C20 40 22 38 22 32 V26 Q22 18 30 18 H62 Q70 18 70 26 V32 C70 38 72 40 78 40 Z" fill="#6c63d4"/>
+  <path d="M90 29 H104 M97 22 V36" stroke="#c9c6ee" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="64" cy="98" r="20" fill="#fff4d6"/><rect x="0" y="98" width="128" height="30" fill="#4b3f95"/></g>
+</svg>
