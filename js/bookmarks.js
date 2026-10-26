@@ -2,6 +2,7 @@
 import { load, save, settings } from './store.js';
 import { t } from './i18n.js';
 import { $, h, svg, ICONS, uid, hasChrome } from './util.js';
+import { xbr2x } from './upscale.js';
 
 // Shown on first run only. They start on Chrome's own cached icons (nothing is fetched, no logos are bundled);
 // Settings → "Improve bookmark icons" swaps them for each site's own high-resolution icon in one click.
@@ -42,7 +43,7 @@ export function normalizeUrl(v) {
 
 // Chrome's own icon cache (the `favicon` permission): no network and no prompt, but small,
 // and only for sites this browser has visited. For the others Chrome returns a grey globe.
-const faviconUrl = url => chrome.runtime.getURL(`/_favicon/?pageUrl=${encodeURIComponent(url)}&size=64`);
+const faviconUrl = (url, size = 64) => chrome.runtime.getURL(`/_favicon/?pageUrl=${encodeURIComponent(url)}&size=${size}`);
 let globe;
 async function pixels(src) {
   const img = new Image();
@@ -55,15 +56,81 @@ async function pixels(src) {
 // Compare with what Chrome returns for a site that cannot exist.
 const isGlobe = async url => (await pixels(faviconUrl(url))) === (await (globe ??= pixels(faviconUrl('https://tabula.invalid/'))));
 
+// Chrome usually has a 32 px icon; asked for 64 it just stretches it, and the tile looks soft. When Chrome's 64
+// holds no more than a stretched 32, double the 32 with xBR instead (js/upscale.js). A real larger icon is kept,
+// and 16 px ones are left alone: doubling twice turns them into mush.
+async function sharpFavicon(url) {
+  const decode = async size => { const img = new Image(); img.src = faviconUrl(url, size); await img.decode(); return img; };
+  const [i32, i64] = await Promise.all([decode(32), decode(64)]);
+  const read = (img, size, smooth) => {
+    const ctx = new OffscreenCanvas(size, size).getContext('2d', { willReadFrequently: true });
+    if (smooth) ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, size, size);
+    return ctx.getImageData(0, 0, size, size);
+  };
+  const stretched = read(i32, 64, true).data, given = read(i64, 64).data;
+  let diff = 0;
+  for (let i = 0; i < given.length; i++) diff += Math.abs(given[i] - stretched[i]);
+  diff /= given.length;
+  console.debug('[tabula] favicon', new URL(url).hostname, diff > 7 ? `Chrome has a larger icon (${diff.toFixed(1)})` : `32 px, doubled (${diff.toFixed(1)})`);
+  if (diff > 7) return null; // measured: a stretched 32 differs by 0.3–5.3, a real 64 by 8.7 and more
+  const up = xbr2x(read(i32, 32));
+  const canvas = new OffscreenCanvas(up.width, up.height);
+  canvas.getContext('2d').putImageData(new ImageData(up.data, up.width, up.height), 0, 0);
+  const blob = await canvas.convertToBlob();
+  return new Promise(resolve => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(blob); });
+}
+
+// What became of each Chrome icon, so a new tab doesn't decode, compare and upscale the same icons again:
+// { [bookmark url]: { kind: 'sharp' | 'native' | 'globe', src?, t } }. A sharpened icon and "Chrome has a real
+// larger one" are kept for a week; "no icon" only for a day, since visiting the site gives Chrome one.
+// Kept apart from the bookmarks, so exports stay small.
+export const FAVICON_KEEP = { sharp: 7 * 864e5, native: 7 * 864e5, globe: 864e5 };
+export const freshFavicon = (cache, url, now = Date.now()) => {
+  const c = cache[url];
+  return c && now - c.t < FAVICON_KEEP[c.kind] ? c : null;
+};
+// Only bookmarks still on Chrome's icon need an entry.
+export const pruneFavicons = (cache, list) => {
+  const keep = new Set(list.filter(b => b.icon?.type === 'favicon').map(b => b.url));
+  return Object.fromEntries(Object.entries(cache).filter(([url]) => keep.has(url)));
+};
+let favicons = load('favicons', {});
+const working = new Map(); // url → promise: re-renders in the same tab wait for the same work
+
+function resolveFavicon(url) {
+  if (!working.has(url)) {
+    working.set(url, (async () => {
+      const entry = { t: Date.now() };
+      if (await isGlobe(url)) entry.kind = 'globe';
+      else {
+        const sharp = await sharpFavicon(url);
+        Object.assign(entry, sharp ? { kind: 'sharp', src: sharp } : { kind: 'native' });
+      }
+      favicons = pruneFavicons({ ...load('favicons', {}), [url]: entry }, bms);
+      save('favicons', favicons);
+      return entry;
+    })().catch(e => { working.delete(url); throw e; }));
+  }
+  return working.get(url);
+}
+
 export function iconEl(b, cls = '') {
   const ic = b.icon || { type: 'letter' };
   const box = h('span', { class: 'tile-icon ' + cls });
   if (ic.type === 'emoji') {
     box.textContent = ic.value;
   } else if (ic.type === 'favicon' && hasChrome) {
-    box.append(h('img', { src: faviconUrl(b.url), alt: '', draggable: 'false', decoding: 'async' }));
-    // A site Chrome has no icon for gets a coloured letter instead of the globe.
-    isGlobe(b.url).then(blank => { if (blank) box.replaceWith(iconEl({ ...b, icon: { type: 'letter' } }, cls)); }).catch(() => {});
+    // A site Chrome has no icon for gets a coloured letter instead of the globe; the others get sharpened.
+    // Known results are used straight away; only new or expired ones are worked out (once per tab).
+    const known = freshFavicon(favicons, b.url);
+    if (known?.kind === 'globe') return iconEl({ ...b, icon: { type: 'letter' } }, cls);
+    const img = h('img', { src: known?.kind === 'sharp' ? known.src : faviconUrl(b.url), alt: '', draggable: 'false', decoding: 'async' });
+    box.append(img);
+    if (!known) resolveFavicon(b.url).then(r => {
+      if (r.kind === 'globe') box.replaceWith(iconEl({ ...b, icon: { type: 'letter' } }, cls));
+      else if (r.kind === 'sharp') img.src = r.src;
+    }).catch(e => console.debug('[tabula] favicon', b.url, e));
   } else if (ic.type === 'img' && ic.value) {
     if (ic.full) box.classList.add('full');
     const img = h('img', { src: ic.value, alt: '', draggable: 'false', decoding: 'async' });
