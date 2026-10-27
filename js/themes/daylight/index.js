@@ -84,8 +84,13 @@ export default {
     const pct = v => Math.round(v * 100) + '%';
     const sliders = [];
     const note = h('p', { class: 'note' });
-    const after = key => { if (key === 'sunStyle') note.textContent = t(cfg.sunStyle === 'atmospheric' ? 'sunAtmoNote' : 'sunSoftNote'); };
-    const style = select('sunStyle', [['soft', t('sunSoft')], ['atmospheric', t('sunAtmo')]]);
+    const after = key => {
+      if (key !== 'sunStyle') return;
+      note.textContent = t(cfg.sunStyle === 'atmospheric' ? 'sunAtmoNote' : 'sunSoftNote');
+      style.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === cfg.sunStyle)));
+    };
+    const style = h('div', { class: 'seg wide', role: 'group' }, [['soft', t('sunSoft')], ['atmospheric', t('sunAtmo')]].map(([v, text]) =>
+      h('button', { type: 'button', 'data-v': v, onclick: () => { cfg.sunStyle = v; update({ sunStyle: v }); after('sunStyle'); } }, text)));
     after('sunStyle');
 
     const resetTo = (label, values) => {
@@ -93,7 +98,7 @@ export default {
       b.addEventListener('click', () => {
         Object.assign(cfg, values);
         update({ ...values });
-        style.value = cfg.sunStyle; after('sunStyle');
+        after('sunStyle');
         starSel.value = cfg.starPlace; bearingSel.value = cfg.bearing;
         for (const [key, input, out, fmt] of sliders) { input.value = cfg[key]; out.value = fmt(cfg[key]); }
       });
@@ -104,7 +109,7 @@ export default {
     const bearingSel = select('bearing', [['pole', t('bearPole')], ['0', t('north')], ['90', t('east')], ['180', t('south')], ['270', t('west')]]);
 
     el.append(
-      h('label', { class: 'field' }, h('span', {}, t('sunLabel')), style), note,
+      h('div', { class: 'field' }, h('span', {}, t('sunLabel')), style), note,
       slider('sharpness', 0, 1, pct),
       slider('warmth', 0.3, 1.3, pct),
       slider('horizon', 0.55, 0.78, v => t('fromBottom', { n: Math.round((1 - v) * 100) })),
