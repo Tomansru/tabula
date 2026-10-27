@@ -21,6 +21,9 @@ function palette(alt) {
   const a = PALETTE[i], b = PALETTE[i + 1], t = smooth(a[0], b[0], alt);
   return a.slice(1).map((v, j) => blend(v, b[j + 1], t));
 }
+// Atmospheric sun tint: -1 pulls the warm colours towards yellow, 1 towards red, 0 leaves them as drawn.
+const YELLOW = rgb('ffdc8c'), RED = rgb('dc4b3c');
+const toner = tint => col => tint ? blend(col, tint < 0 ? YELLOW : RED, Math.abs(tint) * .55) : col;
 function ellipse(ctx, x, y, rx, ry, col, alpha) {
   if (alpha < .001) return;
   ctx.save(); ctx.translate(x, y); ctx.scale(rx, ry);
@@ -82,7 +85,7 @@ export class Sky {
   }
   draw(ms, state, visualTime = 0) {
     const sun = solar(ms, state.place);
-    const key = [Math.floor(ms / 1000), state.sunStyle, state.horizon, state.sharpness, state.warmth, state.place.lat, state.place.lon].join(':');
+    const key = [Math.floor(ms / 1000), state.sunStyle, state.horizon, state.sharpness, state.warmth, state.haze, state.tint, state.place.lat, state.place.lon].join(':');
     if (key !== this.lastAtmosphere) {
       this.paintAtmosphere(sun, state); this.lastAtmosphere = key;
     }
@@ -102,9 +105,11 @@ export class Sky {
     const direction = state.place.lat < 0 ? -1 : 1;
     const sx = w * (.5 + direction * .38 * Math.sin(sun.hourAngle));
     const sy = hy - sun.up / Math.max(.32, sun.maxUp) * (hy - h * .11);
-    const warm = blend(rgb('f6a475'), rgb('fff0c8'), smooth(0, 24, e));
-    const strength = state.warmth;
     const atmospheric = state.sunStyle === 'atmospheric';
+    // Haze 0.5 is the drawn look: lower gathers the glow around the sun, higher spreads it and softens the disc.
+    const tone = toner(atmospheric ? state.tint : 0), spread = atmospheric ? mix(.6, 1.4, state.haze) : 1;
+    const warm = tone(blend(rgb('f6a475'), rgb('fff0c8'), smooth(0, 24, e)));
+    const strength = state.warmth;
     // Relative ascent dissolves the disc near noon even on short winter days.
     // Very low polar sun retains a disc instead of imitating a high summer sun.
     const dissolve = atmospheric ? smooth(.18, .8, sun.up / Math.max(.12, sun.maxUp)) * smooth(3, 15, e) : 0;
@@ -112,34 +117,35 @@ export class Sky {
     ellipse(c, w - sx, hy - h * .14, w * .85, h * .55, rgb(rising ? 'a5a5c8' : '9f8eaf'), twilight * .22);
     ellipse(c, sx, hy - h * .04, w * .85, h * .58, rgb(rising ? 'e4a7a2' : 'e69881'), twilight * .37 * strength);
     if (atmospheric) {
-      const ember = blend(rgb(rising ? 'ed846e' : 'e77365'), rgb('ffedbd'), smooth(0, 22, e));
+      const ember = tone(blend(rgb(rising ? 'ed846e' : 'e77365'), rgb('ffedbd'), smooth(0, 22, e)));
       const fill = smooth(-10, 3, e);
       // Keep ambient fill broad; as the disc dissolves, a warmer, more local
       // field carries its position across the sky without becoming a new disc.
-      ellipse(c, sx, sy, w * 1.35, h * 1.55, ember, fill * .56 * strength);
-      const sunlight = blend(warm, rgb('ffe2a3'), dissolve);
-      ellipse(c, sx, sy, w * mix(.85, .46, dissolve), h * mix(1.05, .82, dissolve), sunlight, daylight * mix(.38, .88, dissolve) * strength);
-      ellipse(c, sx, hy - h * .03, w * .95, h * .48, rgb('e97d73'), twilight * .48 * strength);
-      ellipse(c, sx, hy, w * .58, h * .24, rgb('f6a078'), twilight * .37 * strength);
+      ellipse(c, sx, sy, w * 1.35 * spread, h * 1.55 * spread, ember, fill * .56 * strength);
+      const sunlight = blend(warm, tone(rgb('ffe2a3')), dissolve);
+      ellipse(c, sx, sy, w * mix(.85, .46, dissolve) * spread, h * mix(1.05, .82, dissolve) * spread, sunlight, daylight * mix(.38, .88, dissolve) * strength);
+      ellipse(c, sx, hy - h * .03, w * .95 * spread, h * .48 * spread, tone(rgb('e97d73')), twilight * .48 * strength);
+      ellipse(c, sx, hy, w * .58 * spread, h * .24 * spread, tone(rgb('f6a078')), twilight * .37 * strength);
     } else {
       ellipse(c, sx, sy, w * .95, h * .95, warm, daylight * .34 * strength);
       ellipse(c, sx, sy, w * .48, h * .58, warm, daylight * .27 * strength);
     }
     // Broad horizon emission crosses the horizon on both sides, with no clipping plane.
-    ellipse(c, sx, hy, w * .68, h * .21, rgb('ed977d'), twilight * .39 * strength);
-    ellipse(c, sx, hy + h * .018, w * .38, h * .10, rgb('ffc28b'), twilight * .45 * strength);
+    ellipse(c, sx, hy, w * .68, h * .21, tone(rgb('ed977d')), twilight * .39 * strength);
+    ellipse(c, sx, hy + h * .018, w * .38, h * .10, tone(rgb('ffc28b')), twilight * .45 * strength);
     const visible = smooth(-3.8, -.3, e);
     if (visible > .001) {
       const radius = Math.max(13, Math.min(w, h) * (atmospheric ? .038 : .032));
       const core = visible * (1 - dissolve);
-      ellipse(c, sx, sy, radius * 8, radius * 7, warm, core * (atmospheric ? .38 : .24) * strength);
-      ellipse(c, sx, sy, radius * 3, radius * 2.6, rgb('ffe0ad'), core * (atmospheric ? .42 : .25) * strength);
+      ellipse(c, sx, sy, radius * 8 * spread, radius * 7 * spread, warm, core * (atmospheric ? .38 : .24) * strength);
+      ellipse(c, sx, sy, radius * 3, radius * 2.6, tone(rgb('ffe0ad')), core * (atmospheric ? .42 : .25) * strength);
       // Both styles share the same disc and horizon mask, with separate edge/opacity.
       const d = this.dc, size = 192, center = size / 2;
       d.clearRect(0, 0, size, size);
       const r = center * .7, disk = d.createRadialGradient(center, center, 0, center, center, r);
-      const edge = atmospheric ? mix(.72, .96, state.sharpness) : mix(.38, .91, state.sharpness);
-      const col = blend(rgb(atmospheric ? 'ffe2b1' : 'ffd29f'), rgb('fff1cb'), smooth(0, 18, e));
+      // The atmospheric disc's edge follows haze (0.5 gives the old 0.912); the soft disc keeps its sharpness slider.
+      const edge = atmospheric ? clamp(.912 - (state.haze - .5) * .4, .6, .97) : mix(.38, .91, state.sharpness);
+      const col = tone(blend(rgb(atmospheric ? 'ffe2b1' : 'ffd29f'), rgb('fff1cb'), smooth(0, 18, e)));
       disk.addColorStop(0, color(col, .88)); disk.addColorStop(edge, color(col, .84));
       disk.addColorStop(1, color(col, 0)); d.fillStyle = disk; d.fillRect(0, 0, size, size);
       // A finite haze depth absorbs the submerged disc gradually; bloom remains below it.
@@ -155,8 +161,8 @@ export class Sky {
     }
     // The "drop": concentrated light in haze, present before the disc clears the horizon.
     const contact = Math.exp(-(((e + .6) / 3.2) ** 2)) * strength;
-    ellipse(c, sx, hy, w * .18, h * .055, rgb('ffcc91'), contact * .47);
-    ellipse(c, sx, hy + h * .04, w * .26, h * .15, rgb('e5b59c'), contact * .17);
+    ellipse(c, sx, hy, w * .18, h * .055, tone(rgb('ffcc91')), contact * .47);
+    ellipse(c, sx, hy + h * .04, w * .26, h * .15, tone(rgb('e5b59c')), contact * .17);
     // Thin, irregular veils. Static at paused time; evolve with solar time while playing.
     const drift = Math.sin(sun.hourAngle * .8) * w * .025;
     c.globalAlpha = twilight * .13 + daylight * .035;

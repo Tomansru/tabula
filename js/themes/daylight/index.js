@@ -17,13 +17,13 @@ function sunPlace() {
   return { name: '', lat: 48, lon: -new Date().getTimezoneOffset() / 4 };
 }
 
-const DEFAULTS = { sunStyle: 'atmospheric', sharpness: 0.8, warmth: 1, horizon: 0.68, starlight: 1, bearing: 'pole', starPlace: 'same' };
+const DEFAULTS = { sunStyle: 'atmospheric', sharpness: 0.8, haze: 0.5, tint: 0, warmth: 1, horizon: 0.68, starlight: 1, bearing: 'pole', starPlace: 'same' };
 // "Back to soft light" restores the original demo's gentler look.
 const SOFT = { ...DEFAULTS, sunStyle: 'soft', sharpness: 0.45, warmth: 0.85, starlight: 0.8 };
 
 function stateOf(cfg) {
   return {
-    sunStyle: cfg.sunStyle, sharpness: cfg.sharpness, warmth: cfg.warmth, horizon: cfg.horizon,
+    sunStyle: cfg.sunStyle, sharpness: cfg.sharpness, haze: cfg.haze, tint: cfg.tint, warmth: cfg.warmth, horizon: cfg.horizon,
     starlight: cfg.starlight, bearing: cfg.bearing,
     place: sunPlace(),
     starPlace: cfg.starPlace === 'same' ? null : PLACES[+cfg.starPlace] || null,
@@ -73,20 +73,25 @@ export default {
       sel.addEventListener('change', () => { cfg[key] = sel.value; update({ [key]: sel.value }); after(key); });
       return sel;
     };
-    const slider = (key, min, max, fmt) => {
+    const slider = (key, min, max, fmt, only) => {
       const out = h('output', {}, fmt(cfg[key]));
       const input = h('input', { type: 'range', min, max, step: 0.01 });
       input.value = cfg[key];
       input.addEventListener('input', () => { cfg[key] = +input.value; out.value = fmt(cfg[key]); update({ [key]: cfg[key] }); });
       sliders.push([key, input, out, fmt]);
-      return field(t(key === 'horizon' ? 'horizonHeight' : key), input, out);
+      const row = field(t(key === 'horizon' ? 'horizonHeight' : key), input, out);
+      if (only) styled.push([only, row]);
+      return row;
     };
     const pct = v => Math.round(v * 100) + '%';
-    const sliders = [];
+    const sliders = [], styled = [];
+    // Yellow ↔ red, with the drawn colours in the middle.
+    const hue = v => Math.abs(v) < .03 ? t('tintNatural') : t(v < 0 ? 'tintYellow' : 'tintRed', { n: Math.round(Math.abs(v) * 100) });
     const note = h('p', { class: 'note' });
     const after = key => {
       if (key !== 'sunStyle') return;
       note.textContent = t(cfg.sunStyle === 'atmospheric' ? 'sunAtmoNote' : 'sunSoftNote');
+      for (const [only, row] of styled) row.hidden = only !== cfg.sunStyle;
       style.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === cfg.sunStyle)));
     };
     const style = h('div', { class: 'seg wide', role: 'group' }, [['soft', t('sunSoft')], ['atmospheric', t('sunAtmo')]].map(([v, text]) =>
@@ -110,7 +115,9 @@ export default {
 
     el.append(
       h('div', { class: 'field' }, h('span', {}, t('sunLabel')), style), note,
-      slider('sharpness', 0, 1, pct),
+      slider('sharpness', 0, 1, pct, 'soft'),
+      slider('haze', 0, 1, pct, 'atmospheric'),
+      slider('tint', -1, 1, hue, 'atmospheric'),
       slider('warmth', 0.3, 1.3, pct),
       slider('horizon', 0.55, 0.78, v => t('fromBottom', { n: Math.round((1 - v) * 100) })),
       h('label', { class: 'field' }, h('span', {}, t('starSky')), starSel),
@@ -119,6 +126,7 @@ export default {
       h('p', { class: 'note' }, t('starsNote')),
       h('div', { class: 'stack' }, resetTo('resetDefaults', DEFAULTS), resetTo('resetLight', SOFT)),
     );
+    after('sunStyle');
   },
 
   activate(stage, cfg) {
