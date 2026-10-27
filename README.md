@@ -103,7 +103,7 @@ and keeps the zip as a build artifact.
 ### Releasing
 
 1. Raise `version` in `manifest.json`.
-2. Push a tag with the same version: `git tag v1.0.1 && git push origin v1.0.1`.
+2. Push a tag with the same version: `git tag v1.1.0 && git push origin v1.1.0`.
 3. CI checks that the tag matches the manifest, then creates a GitHub release with the zip attached.
 4. Upload that zip in the Chrome Web Store dashboard (see [store/README.md](store/README.md)).
 
