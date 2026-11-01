@@ -181,7 +181,7 @@ svg { display: block; }
   letter-spacing: var(--clock-track);
   line-height: 1;
   /* The trailing letter-spacing would push HH:MM left of centre; give it back on the right. */
-  padding: 0 0 .02em calc(-1 * var(--clock-track));
+  padding: 0 calc(-1 * var(--clock-track)) .02em 0;
   font-variant-numeric: tabular-nums;
   color: var(--fg);
   white-space: nowrap;
