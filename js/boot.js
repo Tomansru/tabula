@@ -28,6 +28,7 @@
     if (s.showTodos === false) r.classList.add('no-todos');
     r.dataset.type = s.typeset || 'air';
     if (s.captions === false) r.classList.add('no-caps');
+    if (s.tileLift !== false) r.classList.add('tile-lift');
     if (theme === 'picture' && (pic.src === 'file' || (pic.src === 'url' && pic.url))) r.classList.add('has-bg');
     r.style.setProperty('--dim', (pic.dim ?? 35) / 100);
     r.style.setProperty('--blur', (pic.blur ?? 0) + 'px');

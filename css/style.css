@@ -358,6 +358,10 @@ html:not(.todo-card) .weather, html:not(.todo-card) .todos-card { text-shadow: v
   line-height: 1;
 }
 .tile-icon img { width: 62%; height: 62%; object-fit: contain; }
+/* Optional micro motion: the icon rises a little and its shadow opens up (from the lab/home demo). */
+.tile-lift .tile-icon { transition: transform .22s var(--ease), box-shadow .22s var(--ease); }
+.tile-lift .tile:hover .tile-icon, .tile-lift .tile:focus-visible .tile-icon { transform: translateY(-3px); box-shadow: var(--shadow), 0 8px 18px rgba(0, 0, 0, .14); }
+@media (prefers-reduced-motion: reduce) { .tile-lift .tile:hover .tile-icon, .tile-lift .tile:focus-visible .tile-icon { transform: none; } }
 .tile-icon.full { border: 0; }
 /* Site icons with a transparent background are drawn for light browser tabs (ChatGPT and GitHub are a black mark),
    so they always sit on a light plate, in the dark theme too. Full-bleed icons and letters keep their own colour. */

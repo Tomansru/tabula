@@ -37,7 +37,7 @@ export function initSettings() {
     });
   }
   // Weather effects on the clock are switched off until they are redesigned together with the sky.
-  for (const [sel, key] of [['#sH24', 'h24'], ['#sSec', 'seconds'], ['#sWx', 'showWeather'], ['#sTodoCard', 'todoCard'], ['#sTodos', 'showTodos'], ['#sBmNewTab', 'bmNewTab'], ['#sSearch', 'showSearch'], ['#sCaps', 'captions']]) {
+  for (const [sel, key] of [['#sH24', 'h24'], ['#sSec', 'seconds'], ['#sWx', 'showWeather'], ['#sTodoCard', 'todoCard'], ['#sTodos', 'showTodos'], ['#sBmNewTab', 'bmNewTab'], ['#sSearch', 'showSearch'], ['#sCaps', 'captions'], ['#sLift', 'tileLift']]) {
     $(sel).addEventListener('change', e => setSetting({ [key]: e.target.checked }));
   }
 
@@ -87,6 +87,7 @@ export function syncSettingsUI() {
   $('#sTodos').checked = S.showTodos;
   $('#sBmNewTab').checked = S.bmNewTab;
   $('#sCaps').checked = S.captions;
+  $('#sLift').checked = S.tileLift;
   $('#sIconsField').hidden = !plainIconCount();
   $('#sIcons').disabled = false;
   $('#sIconsNote').textContent = t('improveIconsNote');

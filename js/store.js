@@ -30,6 +30,7 @@ const DEFAULTS = {
   units: 'c',
   showTodos: true,
   todoCard: false,  // cards behind the side widgets (weather, tasks)
+  tileLift: true,   // bookmark icons rise a little on hover
   typeset: 'air',   // typography preset: air | classic, see css/tokens.css
   captions: true,   // small captions in the corners of the frame
   bmNewTab: true,

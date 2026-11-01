@@ -26,6 +26,7 @@ function applyMode() {
   if (owner?.ownsMode) save('ink', root.dataset.theme);
   root.classList.toggle('todo-card', !!S.todoCard);
   root.classList.toggle('no-caps', !S.captions);
+  root.classList.toggle('tile-lift', !!S.tileLift);
   root.classList.toggle('no-todos', !S.showTodos);
   root.dataset.type = S.typeset;
 }
@@ -116,7 +117,7 @@ on('settings', p => {
     pullWeather(); // city names don't change, but descriptions do
     updateWeatherUI();
   }
-  if ('mode' in p || 'todoCard' in p || 'showTodos' in p) { applyMode(); notifyThemes('mode'); }
+  if ('mode' in p || 'todoCard' in p || 'showTodos' in p || 'tileLift' in p) { applyMode(); notifyThemes('mode'); }
   // Type and captions move the search bar, which is the sky's horizon.
   if ('typeset' in p || 'captions' in p) { applyMode(); syncSettingsUI(); dispatchEvent(new Event('resize')); }
   if ('theme' in p) { switchTheme(S.theme); applyMode(); syncSettingsUI(); }
