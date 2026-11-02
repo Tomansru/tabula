@@ -2,6 +2,8 @@
 
 A calm, fast new tab page for Chrome. No frameworks, no build step, no trackers.
 
+Chrome Web Store: [https://chromewebstore.google.com/detail/mcgcgeeoebkcomjbcioenacckkgjembh](https://chromewebstore.google.com/detail/mcgcgeeoebkcomjbcioenacckkgjembh?utm_source=github.com&utm_medium=referral&utm_campaign=readme)
+
 The screen is a frame of three columns: weather on the left, the clock in the centre and today's tasks on the
 right, all starting on one top line. Small captions sit in the corners: a phrase that changes at random (top left),
 the day of the year (top right) and how far the day has got (bottom right: the share left until sunset, the share passed after it). The settings button has the bottom-left corner.
