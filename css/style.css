@@ -180,8 +180,7 @@ svg { display: block; }
   font-weight: var(--clock-weight);
   letter-spacing: var(--clock-track);
   line-height: 1;
-  /* The trailing letter-spacing would push HH:MM left of centre; give it back on the right. */
-  padding: 0 calc(-1 * var(--clock-track)) .02em 0;
+  padding-bottom: .02em;
   font-variant-numeric: tabular-nums;
   color: var(--fg);
   white-space: nowrap;
@@ -191,12 +190,17 @@ svg { display: block; }
    The column is a zero-width inline block, so it takes no room, and its last line (AM/PM, or lone seconds)
    sits on the digits' baseline whatever the typography's sizes. */
 .clock { display: inline-block; }
+/* Letter-spacing is added after every glyph, the last one too, so with negative tracking the HH:MM box ends
+   short of the last digit's advance: the digit spills out of it on the right, and the seconds column that
+   starts at that edge sits tighter in one typography than in the other. Give the tracking back on HH:MM itself
+   (not on .clock), so its box holds the whole last digit and the column hangs off the real edge. */
+.clock .hm { padding-right: calc(-1 * var(--clock-track)); }
 .clock .side {
   display: inline-block;
   width: 0;
   vertical-align: baseline;
   position: relative;
-  left: .08em; /* of the clock: the same gap in both typographies */
+  left: .04em; /* of the clock, from the last digit's full advance: the same gap in both typographies */
   opacity: .62;
 }
 .clock .side > * { display: block; font-size: var(--side-size); letter-spacing: .02em; line-height: 1; }
