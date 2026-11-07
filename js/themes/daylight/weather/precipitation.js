@@ -1,11 +1,12 @@
 // The weather's crisp half: what actually falls. Drops and flakes live at three depths, and the nearest ones
 // land on the page itself: rain splashes on the search bar, snow slowly settles on it and on the bookmark icons.
+// Each surface says from what depth things land on it, so the icons can catch more when they are alone.
 
 const TAU = Math.PI * 2;
 const rnd = (a = 1, b) => (b === undefined ? Math.random() * a : a + Math.random() * (b - a));
 const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
-const MAX_DROPS = 760, MAX_FLAKES = 820, DROPS_LAND_FROM = .8, FLAKES_LAND_FROM = .62;
+const MAX_DROPS = 760, MAX_FLAKES = 820;
 
 function flakeSprite(col) {
   const c = document.createElement('canvas'); c.width = c.height = 48;
@@ -21,6 +22,7 @@ export class Precipitation {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.drops = []; this.flakes = []; this.splashes = []; this.surfaces = [];
+    this.dropsFrom = this.flakesFrom = Infinity; // nothing to land on yet
     this.bolt = null;
     this.spriteKey = '';
     this.time = 0;
@@ -36,15 +38,18 @@ export class Precipitation {
     this.ctx.lineCap = 'round';
   }
 
-  // Page elements things can land on: { x, y, w, h, r, max } from their boxes. Keeps what already lies on the same one.
+  // Page elements things can land on: { key, x, y, w, h, r, max, drops, flakes } from their boxes; drops and flakes
+  // are the depths from which they land on it. Keeps what already lies on the same element.
   setSurfaces(list) {
-    const old = this.surfaces;
+    const old = new Map(this.surfaces.map((s, i) => [s.key ?? i, s]));
+    this.dropsFrom = Math.min(Infinity, ...list.map(b => b.drops ?? .8));
+    this.flakesFrom = Math.min(Infinity, ...list.map(b => b.flakes ?? .62));
     this.surfaces = list.map((b, i) => {
-      const prev = old[i];
+      const prev = old.get(b.key ?? i);
       const n = Math.max(6, Math.round(b.w / 3));
       const keep = prev && prev.n === n;
       return {
-        ...b, n,
+        drops: .8, flakes: .62, ...b, n,
         fill: prev ? prev.fill : 0,
         bumps: keep ? prev.bumps : new Float32Array(n),
         // A slow irregular outline, fixed per surface, so a drift is never a clean strip.
@@ -108,7 +113,7 @@ export class Precipitation {
       const len = (20 + 58 * d.z) * d.s * (1 - p.fine * .68) * (1 + gust * .25);
       if (d.y - len > h) { d.y = rnd(-120, -10); d.x = rnd(-h * slant, w); }
       if (d.x > w + 60) d.x -= w + 120;
-      if (p.landing && d.z > DROPS_LAND_FROM) this.dropHits(d, prevY, p);
+      if (p.landing && d.z > this.dropsFrom) this.dropHits(d, prevY, p);
       groups[d.z < .34 ? 0 : d.z < .68 ? 1 : 2].push(d.x, d.y, len);
     }
     const looks = [[.7, .1], [1, .14], [1.3, .17]];
@@ -126,7 +131,7 @@ export class Precipitation {
   }
   dropHits(d, prevY, p) {
     for (const s of this.surfaces) {
-      if (d.x < s.x + 2 || d.x > s.x + s.w - 2) continue;
+      if (d.z <= s.drops || d.x < s.x + 2 || d.x > s.x + s.w - 2) continue;
       const top = this.edge(s, d.x);
       if (prevY < top && d.y >= top) {
         if (this.splashes.length < 70) this.splashes.push({ x: d.x, y: top, t: 0, life: rnd(.2, .34), big: p.fine < .5 && d.z > .8, dir: rnd() < .5 ? -1 : 1 });
@@ -176,7 +181,7 @@ export class Precipitation {
       f.y += vy * dt; f.x += vx * dt;
       if (f.y > h + 24) { f.y = rnd(-40, -8); f.x = rnd(-margin, w); }
       if (f.x > w + margin) { f.x = -margin + rnd(-20, 0); f.y = rnd(-20, h * .9); }
-      if (p.landing && z > FLAKES_LAND_FROM && this.flakeHits(f, prevY, p)) continue;
+      if (p.landing && z > this.flakesFrom && this.flakeHits(f, prevY, p)) continue;
       // Far flakes are specks; the nearest few are big, soft and out of focus.
       const bokeh = smooth(.86, 1, z);
       const size = (1.6 + 5.2 * z + 13 * bokeh) * f.s * scale;
@@ -189,7 +194,7 @@ export class Precipitation {
   }
   flakeHits(f, prevY, p) {
     for (const s of this.surfaces) {
-      if (f.x < s.x + 3 || f.x > s.x + s.w - 3) continue;
+      if (f.z <= s.flakes || f.x < s.x + 3 || f.x > s.x + s.w - 3) continue;
       const top = this.edge(s, f.x) - s.max * s.fill * .5;
       if (prevY < top && f.y >= top) {
         const k = Math.max(0, Math.min(s.n - 1, Math.round((f.x - s.x) / s.w * (s.n - 1))));

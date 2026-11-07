@@ -10,6 +10,13 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const root = document.documentElement;
 const MORPH = 1.25; // seconds: how slowly one sky turns into another
 const NIGHT_SNOW = [.62, .7, .86];
+// From what depth (0 far … 1 near) drops and flakes land on a surface rather than fall past it. Under the search bar
+// the icons share the near drops with it; on their own they catch about twice as much rain and snow.
+const LAND = {
+  search: { drops: .8, flakes: .62 },
+  icons: { drops: .8, flakes: .62 },
+  iconsAlone: { drops: .52, flakes: .42 },
+};
 
 // The text that sits right on the sky. need: the APCA contrast it reads well at (large digits need less);
 // weight: how much it matters when the inks are compared. Widgets on cards are not on the sky.
@@ -219,21 +226,26 @@ export class SkyWeather {
     this.wasBusy = busy;
   }
   // The search bar and the bookmark icons, wherever they are now: bookmarks come and go and the page can scroll.
+  // A hidden search bar keeps its place in the layout, so whether it is shown is asked of the element, not its box.
+  // Without it the icons are the only ledge, and they catch the nearer half of the drops and flakes, not the nearest few.
   measure() {
     if (!this.landing) { this.falling.setSurfaces([]); return; }
     const list = [];
-    const add = (el, max) => {
-      if (!el) return;
+    const shown = el => el.checkVisibility?.({ visibilityProperty: true, opacityProperty: true }) ?? getComputedStyle(el).visibility !== 'hidden';
+    const add = (el, max, depth) => {
+      if (!el || !shown(el)) return false;
       // A hovered icon has only lifted for a moment: what lies on it stays where it was.
       const lifted = el.closest('.tile')?.matches(':hover, :focus-visible') && this.boxes.get(el);
       const r = lifted || el.getBoundingClientRect();
       this.boxes.set(el, r);
-      if (!r.width || !r.height) return;
+      if (!r.width || !r.height) return false;
       const radius = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
-      list.push({ x: r.left, y: r.top, w: r.width, h: r.height, r: Math.min(radius, r.height / 2), max });
+      list.push({ key: el, x: r.left, y: r.top, w: r.width, h: r.height, r: Math.min(radius, r.height / 2), max, ...depth });
+      return true;
     };
-    add(document.getElementById('search'), 10);
-    document.querySelectorAll('#bookmarks .tile:not(.add) .tile-icon').forEach(el => add(el, 7));
+    const search = add(document.getElementById('search'), 10, LAND.search);
+    const icons = search ? LAND.icons : LAND.iconsAlone;
+    document.querySelectorAll('#bookmarks .tile:not(.add) .tile-icon').forEach(el => add(el, 7, icons));
     this.falling.setSurfaces(list);
   }
 
