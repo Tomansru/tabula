@@ -18,7 +18,7 @@ in vec2 vUv;
 out vec4 frag;
 uniform sampler2D uNoise, uSky;
 uniform vec2 uRes, uSun, uDrift, uFlashAt;
-uniform float uTime, uHorizon, uSunVis, uDay, uAspect;
+uniform float uTime, uHorizon, uSunVis, uDay, uAspect, uOpaque;
 uniform vec3 uLit, uShade, uGlow, uVeilCol;
 uniform float uCover, uPuff, uCirrus, uVeil, uFog, uShafts, uRays, uBlow, uFlash, uWind;
 
@@ -190,8 +190,16 @@ void main() {
   // A pinch of dither: slow gradients at low resolution would otherwise band.
   float dither = (hash(gl_FragCoord.xy + fract(uTime) * 7.) - .5) / 255. * 1.6;
   o.rgb = clamp(o.rgb + dither * step(.002, o.a), vec3(0.), vec3(max(o.a, 0.)));
-  frag = o;
+  // For peek(): the sky as a whole, the painted sky with the clouds over it, so nothing is mixed on the CPU.
+  frag = uOpaque > .5 ? vec4(o.rgb + sky * (1. - o.a), 1.) : o;
 }`;
+
+// GPU rows come bottom first; the page reads top first.
+function flip(rows, w, h) {
+  const out = new Uint8ClampedArray(rows.length), row = w * 4;
+  for (let y = 0; y < h; y++) out.set(rows.subarray((h - 1 - y) * row, (h - y) * row), y * row);
+  return out;
+}
 
 // The noise comes baked (see noise.js): decoding it takes a tenth of a millisecond, baking it here took 10–14.
 const decode = b64 => (Uint8Array.fromBase64 ? Uint8Array.fromBase64(b64) : Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
@@ -274,38 +282,54 @@ export class Clouds {
   }
   // The whole sky as it is on screen, painted sky and clouds together, as small as the sky texture: RGBA bytes,
   // top row first. Used to choose the page's ink, a few times a second at most.
+  // Reading pixels back makes the page wait until the GPU has drawn everything asked of it, a full frame of clouds
+  // included. Only the first read waits, so the page opens with the right ink; later calls ask for the pixels and
+  // get them on the next call: the sky as it was a moment ago, or null while the GPU has not got there yet.
   peek() {
-    const { width: w, height: h } = this.small, sky = this.sctx.getImageData(0, 0, w, h).data;
-    const gl = this.gl;
-    if (!gl || !this.drawn) return sky;
-    if (!this.peekTarget) {
-      const tex = gl.createTexture();
-      gl.activeTexture(gl.TEXTURE2);
-      gl.bindTexture(gl.TEXTURE_2D, tex);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-      const fb = gl.createFramebuffer();
-      gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      this.peekTarget = { fb, pixels: new Uint8Array(w * h * 4) };
+    const { width: w, height: h } = this.small, gl = this.gl;
+    if (!gl || !this.drawn) return this.sctx.getImageData(0, 0, w, h).data;
+    const t = this.peekTarget ??= this.peekStart(w, h);
+    let ready = null;
+    if (t.sync) {
+      if (gl.getSyncParameter(t.sync, gl.SYNC_STATUS) !== gl.SIGNALED) return null;
+      gl.deleteSync(t.sync);
+      t.sync = null;
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, t.buffer);
+      gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, t.pixels);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+      ready = flip(t.pixels, w, h);
     }
-    const { fb, pixels } = this.peekTarget;
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb);
     gl.viewport(0, 0, w, h);
     this.render({ ...this.drawn, flash: 0 }, true);
-    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    if (t.first) {
+      t.first = false;
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, t.pixels);
+      ready = flip(t.pixels, w, h);
+    } else {
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, t.buffer);
+      // Fresh storage for every read: Chrome drops its fast copy of a buffer that is written twice, read or not.
+      gl.bufferData(gl.PIXEL_PACK_BUFFER, w * h * 4, gl.STREAM_READ);
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+      t.sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+      gl.flush();
+    }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    // The clouds come premultiplied and bottom row first; lay them over the painted sky.
-    const out = new Uint8ClampedArray(sky.length);
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const i = (y * w + x) * 4, j = ((h - 1 - y) * w + x) * 4, keep = 1 - pixels[j + 3] / 255;
-      out[i] = pixels[j] + sky[i] * keep;
-      out[i + 1] = pixels[j + 1] + sky[i + 1] * keep;
-      out[i + 2] = pixels[j + 2] + sky[i + 2] * keep;
-      out[i + 3] = 255;
-    }
-    return out;
+    return ready;
+  }
+  // A small target to draw the sky for peek() into, and a buffer the GPU copies it to on its own time.
+  peekStart(w, h) {
+    const gl = this.gl, tex = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    const fb = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { fb, buffer: gl.createBuffer(), pixels: new Uint8Array(w * h * 4), first: true, sync: null };
   }
   // aside: drawing for peek(), not for the screen.
   render(p, aside = false) {
@@ -314,6 +338,7 @@ export class Clouds {
     if (!aside) this.drawn = p;
     gl.uniform2f(u.uRes, this.canvas.width, this.canvas.height);
     gl.uniform1f(u.uAspect, this.aspect);
+    gl.uniform1f(u.uOpaque, aside ? 1 : 0);
     gl.uniform1f(u.uTime, p.time);
     gl.uniform1f(u.uHorizon, p.horizon);
     gl.uniform2f(u.uSun, p.sunX, p.sunY);

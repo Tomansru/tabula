@@ -174,7 +174,9 @@ export class SkyWeather {
       return;
     }
     if (this.flashStart >= 0) return; // lightning is not a reason to change the ink
-    const zones = this.readZones(this.clouds.peek());
+    const pixels = this.clouds.peek(); // null: still on its way from the GPU, the next call has it
+    if (!pixels) return;
+    const zones = this.readZones(pixels);
     if (!zones.length) return;
     const { lightText, hard, tone } = pickInk(zones, this.inkDark, theme);
     this.scene = luminance(tone);
