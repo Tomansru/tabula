@@ -61,3 +61,8 @@ test('icons match the manifest sizes and the drawing script', async () => {
   assert.equal(read('docs/icon/tabula.svg'), iconSvg(128), 'docs/icon/tabula.svg is out of date: run node scripts/icons.mjs');
   assert.equal(read('docs/icon/tabula-mark.svg'), iconSvg(128, { crop: true }), 'docs/icon/tabula-mark.svg is out of date: run node scripts/icons.mjs');
 });
+
+test('the clouds\' baked noise matches its recipe', async () => {
+  const { noiseModule } = await import('../scripts/noise.mjs');
+  assert.equal(read('js/themes/daylight/weather/noise-data.js'), noiseModule(), 'noise-data.js is out of date: run node scripts/noise.mjs');
+});

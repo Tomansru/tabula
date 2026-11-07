@@ -86,6 +86,7 @@ docs/icon/         the icon's source SVG and the drafts that were not taken
 test/              node:test checks: package and manifest, translations, pure logic
 scripts/pack.sh    builds dist/tabula-<version>.zip with only the extension's files
 scripts/icons.mjs  draws the icon and renders icons/icon{16,32,48,128}.png through headless Chrome
+scripts/noise.mjs  bakes the clouds' noise texture (weather/noise.js) into weather/noise-data.js
 store/             Chrome Web Store listing: texts in five languages, privacy answers, screenshots and promo tiles
 ```
 
