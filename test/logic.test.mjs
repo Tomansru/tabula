@@ -9,6 +9,7 @@ import { setLang } from '../js/i18n.js';
 import { dayCaption } from '../js/captions.js';
 import { settings, migrateSettings } from '../js/store.js';
 import { CONDITIONS, DIALS, conditionById, targetDials, readForecast } from '../js/themes/daylight/weather/conditions.js';
+import { apca, apcaY, pickInk, haloFor } from '../js/themes/daylight/weather/ink.js';
 
 // setLang() also sets <html lang>; give it an element to set.
 globalThis.document ??= { documentElement: {} };
@@ -134,4 +135,45 @@ test('heavier readings of the same weather bring more of it, but the same clouds
 test('the real wind leans the sky', () => {
   const rain = conditionById('rain');
   assert.ok(targetDials(rain, { wind: 14 }).wind > targetDials(rain, { wind: 1 }).wind);
+});
+
+/* ---------- the ink over a clouded sky ---------- */
+const grey = (g, need = 60, weight = 1) => ({ ys: Float64Array.of(apcaY([g, g, g])), rgb: [g, g, g], need, weight });
+
+test('APCA contrast matches its reference values', () => {
+  assert.equal(apca(apcaY([0, 0, 0]), apcaY([1, 1, 1])).toFixed(2), '106.04');
+  assert.equal(apca(apcaY([1, 1, 1]), apcaY([0, 0, 0])).toFixed(2), '-107.88');
+  assert.equal(apca(.5, .5), 0);
+});
+
+test('dark text on a pale sky, light text on a dark one, and no help needed when it reads well', () => {
+  const pale = pickInk([grey(.85)]), dark = pickInk([grey(.3)]);
+  assert.equal(pale.lightText, false);
+  assert.equal(dark.lightText, true);
+  assert.equal(pale.hard, 0);
+  assert.equal(dark.hard, 0);
+  assert.ok(pickInk([grey(.6)]).hard > .5, 'a mid-grey sky is the hard one');
+});
+
+test('on a mid-grey sky the time of day settles it, and the ink does not flicker', () => {
+  assert.equal(pickInk([grey(.61)], null, false).lightText, false);
+  assert.equal(pickInk([grey(.61)], null, true).lightText, true);
+  // Once chosen, it stays until the other ink is clearly better.
+  assert.equal(pickInk([grey(.6)], false).lightText, false);
+  assert.equal(pickInk([grey(.62)], true).lightText, true);
+  assert.equal(pickInk([grey(.85)], true).lightText, false);
+});
+
+test('one caption over a dark cloud is not outvoted by a bright patch behind the clock', () => {
+  const zones = [grey(.66, 45, 1), grey(.66, 60, 1), grey(.32, 55, 1)];
+  assert.equal(pickInk(zones).lightText, true);
+});
+
+test('the halo is the sky a step away from the ink, not a white glow on grey', () => {
+  const sky = [.58, .62, .66];
+  assert.equal(haloFor(false, sky, 0, 0), '0 1px 10px rgb(255 255 255 / 0.45), 0 0 3px rgb(255 255 255 / 0.00)');
+  assert.equal(haloFor(true, sky, 0, 0), '0 1px 12px rgb(8 12 28 / 0.45), 0 0 2px rgb(8 12 28 / 0.00)');
+  const [r, g, b] = haloFor(false, sky, .5, 1).match(/rgb\((\d+) (\d+) (\d+)/).slice(1).map(Number);
+  assert.ok(r < 240 && r < g && g < b, 'paler than the sky, still its own blue-grey');
+  assert.ok(r > sky[0] * 255, 'and lighter than the sky behind dark text');
 });

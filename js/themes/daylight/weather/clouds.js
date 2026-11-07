@@ -295,6 +295,7 @@ export class Clouds {
   destroy() {
     this.gl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.gl = null;
+    this.drawn = null;
   }
   get ok() { return !!this.gl; }
   // Soft shapes: well under the screen's resolution is plenty, and keeps a new tab cheap.
@@ -314,14 +315,46 @@ export class Clouds {
     gl.bindTexture(gl.TEXTURE_2D, this.skyTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.small);
   }
-  // A patch of the painted sky, 0…1 in each direction: used to choose the page's ink.
-  sample(u, v) {
-    const d = this.sctx.getImageData(Math.floor(u * 95), Math.floor(v * 53), 1, 1).data;
-    return [d[0] / 255, d[1] / 255, d[2] / 255];
+  // The whole sky as it is on screen, painted sky and clouds together, as small as the sky texture: RGBA bytes,
+  // top row first. Used to choose the page's ink, a few times a second at most.
+  peek() {
+    const { width: w, height: h } = this.small, sky = this.sctx.getImageData(0, 0, w, h).data;
+    const gl = this.gl;
+    if (!gl || !this.drawn) return sky;
+    if (!this.peekTarget) {
+      const tex = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      const fb = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      this.peekTarget = { fb, pixels: new Uint8Array(w * h * 4) };
+    }
+    const { fb, pixels } = this.peekTarget;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.viewport(0, 0, w, h);
+    this.render({ ...this.drawn, flash: 0 }, true);
+    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    // The clouds come premultiplied and bottom row first; lay them over the painted sky.
+    const out = new Uint8ClampedArray(sky.length);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4, j = ((h - 1 - y) * w + x) * 4, keep = 1 - pixels[j + 3] / 255;
+      out[i] = pixels[j] + sky[i] * keep;
+      out[i + 1] = pixels[j + 1] + sky[i + 1] * keep;
+      out[i + 2] = pixels[j + 2] + sky[i + 2] * keep;
+      out[i + 3] = 255;
+    }
+    return out;
   }
-  render(p) {
+  // aside: drawing for peek(), not for the screen.
+  render(p, aside = false) {
     const gl = this.gl, u = this.u;
     if (!gl) return;
+    if (!aside) this.drawn = p;
     gl.uniform2f(u.uRes, this.canvas.width, this.canvas.height);
     gl.uniform1f(u.uAspect, this.aspect);
     gl.uniform1f(u.uTime, p.time);
