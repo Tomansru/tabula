@@ -758,11 +758,15 @@ dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(3px); }
 }
 
 /* Theme "Breathing sky": its own two canvases and a faint film grain under the page. */
-#atmosphere, #stars { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#atmosphere, #stars, #weatherSky, #falling { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .grain {
   position: fixed; inset: 0; pointer-events: none; opacity: .035;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.86' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23fff' filter='url(%23n)' opacity='.5' d='M0 0h180v180H0z'/%3E%3C/svg%3E");
 }
+/* Its weather: the ink follows the clouds, and takes a moment rather than flipping. In-between skies get stronger colours. */
+.sky-weather :is(.clock, .date, .date .wk, .cap, .tile-label, .wx-title, .wx-temp, .wx-sub, .wx-desc, .wx-sun, .ttext, .tlabel, .tsub, .tcount, .search input) { transition: color .9s ease; }
+html[data-theme="dark"].mid-sky { --fg-2: #eee9e3; --fg-3: #d9dade; }
+html[data-theme="light"].mid-sky { --fg-2: #22313a; --fg-3: #3a4b53; }
 .theme-thumb canvas.over { position: absolute; inset: 0; }
 .seg button:disabled { opacity: .45; cursor: default; }
 

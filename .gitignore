@@ -3,3 +3,4 @@
 .claude/
 dist/
 node_modules/
+.idea/

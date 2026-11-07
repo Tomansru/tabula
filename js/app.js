@@ -83,7 +83,7 @@ function updateWeatherUI() {
 /* ---------- search ---------- */
 initSearch();
 
-const pullWeather = force => refreshWeather(force).catch(e => console.debug('[tabula] weather', e));
+const pullWeather = force => refreshWeather(force, activeTheme()?.wantsWeather?.()).catch(e => console.debug('[tabula] weather', e));
 
 /* ---------- boot ---------- */
 if (!S.lang) S.lang = detectLang();

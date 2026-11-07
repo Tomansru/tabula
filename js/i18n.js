@@ -28,6 +28,7 @@ const D = {
     showTodos: "Show tasks", tileLift: "Lift icons on hover", dayOf: "Day {n} of {y}",
     improveIcons: "Improve bookmark icons", improveIconsNote: "Chrome will ask once for access to these sites to download their sharp icons. The access is given back right away.", iconsUpdated: "Icons updated: {n} of {m}",
     iconsFailed: "Couldn’t read: {list}. These keep Chrome’s icon; you can still fetch one in the bookmark’s editor.",
+    skyWeather: "Weather in the sky", skyWeatherOff: "Off", skyWeatherLive: "As outside your window", skyWeatherLiveNote: "Clouds, rain and snow follow the forecast for your location. The sky then moves all the time, which uses more battery.", skyWeatherNoCity: "Choose a location under Weather in the settings, and the sky will follow it.", skyWeatherFixedNote: "This weather stays, whatever it is like outside. The sky then moves all the time, which uses more battery.", weatherStrength: "Weather strength", wxBlizzard: "Blizzard",
   },
   ru: {
     newTab: 'Новая вкладка', settings: 'Настройки', general: 'Основное', language: 'Язык',
@@ -56,6 +57,7 @@ const D = {
     showTodos: "Показывать задачи", tileLift: "Приподнимать иконки при наведении", dayOf: "День {n} из {y}",
     improveIcons: "Улучшить иконки закладок", improveIconsNote: "Chrome один раз спросит доступ к сайтам закладок, чтобы скачать их чёткие иконки. Доступ сразу возвращается.", iconsUpdated: "Обновлено иконок: {n} из {m}",
     iconsFailed: "Не удалось: {list}. У них останется иконка Chrome; загрузить можно вручную в редакторе закладки.",
+    skyWeather: "Погода на небе", skyWeatherOff: "Выключена", skyWeatherLive: "Как за окном", skyWeatherLiveNote: "Облака, дождь и снег следуют прогнозу для вашей локации. Небо при этом всё время движется, и батарея расходуется быстрее.", skyWeatherNoCity: "Укажите локацию в разделе «Погода» настроек, и небо будет следовать за ней.", skyWeatherFixedNote: "Эта погода останется, что бы ни творилось за окном. Небо при этом всё время движется, и батарея расходуется быстрее.", weatherStrength: "Сила погоды", wxBlizzard: "Метель",
   },
   de: {
     newTab: 'Neuer Tab', settings: 'Einstellungen', general: 'Allgemein', language: 'Sprache',
@@ -84,6 +86,7 @@ const D = {
     showTodos: "Aufgaben anzeigen", tileLift: "Symbole beim Überfahren anheben", dayOf: "Tag {n} von {y}",
     improveIcons: "Lesezeichen-Symbole verbessern", improveIconsNote: "Chrome fragt einmal nach Zugriff auf diese Websites, um ihre scharfen Symbole zu laden. Der Zugriff wird sofort zurückgegeben.", iconsUpdated: "Symbole aktualisiert: {n} von {m}",
     iconsFailed: "Nicht lesbar: {list}. Sie behalten das Chrome-Symbol; im Lesezeichen-Editor lässt es sich manuell laden.",
+    skyWeather: "Wetter am Himmel", skyWeatherOff: "Aus", skyWeatherLive: "Wie vor deinem Fenster", skyWeatherLiveNote: "Wolken, Regen und Schnee folgen der Vorhersage für deinen Ort. Der Himmel bewegt sich dann ständig, was mehr Akku braucht.", skyWeatherNoCity: "Wähle in den Einstellungen unter „Wetter“ einen Ort, dann folgt ihm der Himmel.", skyWeatherFixedNote: "Dieses Wetter bleibt, egal wie es draußen aussieht. Der Himmel bewegt sich dann ständig, was mehr Akku braucht.", weatherStrength: "Wetterstärke", wxBlizzard: "Schneesturm",
   },
   es: {
     newTab: 'Nueva pestaña', settings: 'Ajustes', general: 'General', language: 'Idioma',
@@ -112,6 +115,7 @@ const D = {
     showTodos: "Mostrar tareas", tileLift: "Elevar los iconos al pasar el cursor", dayOf: "Día {n} de {y}",
     improveIcons: "Mejorar los iconos de los marcadores", improveIconsNote: "Chrome pedirá una vez acceso a estos sitios para descargar sus iconos nítidos. El acceso se devuelve enseguida.", iconsUpdated: "Iconos actualizados: {n} de {m}",
     iconsFailed: "No se pudo: {list}. Conservan el icono de Chrome; puedes cargarlo a mano en el editor del marcador.",
+    skyWeather: "El tiempo en el cielo", skyWeatherOff: "Desactivado", skyWeatherLive: "Como al otro lado de tu ventana", skyWeatherLiveNote: "Las nubes, la lluvia y la nieve siguen el pronóstico de tu ubicación. El cielo se mueve todo el tiempo, lo que gasta más batería.", skyWeatherNoCity: "Elige una ubicación en Tiempo, en los ajustes, y el cielo la seguirá.", skyWeatherFixedNote: "Este tiempo se queda, haga el que haga fuera. El cielo se mueve todo el tiempo, lo que gasta más batería.", weatherStrength: "Intensidad del tiempo", wxBlizzard: "Ventisca",
   },
   fr: {
     newTab: 'Nouvel onglet', settings: 'Réglages', general: 'Général', language: 'Langue',
@@ -140,6 +144,7 @@ const D = {
     showTodos: "Afficher les tâches", tileLift: "Soulever les icônes au survol", dayOf: "Jour {n} sur {y}",
     improveIcons: "Améliorer les icônes des favoris", improveIconsNote: "Chrome demandera une fois l’accès à ces sites pour télécharger leurs icônes nettes. L’accès est rendu aussitôt.", iconsUpdated: "Icônes mises à jour : {n} sur {m}",
     iconsFailed: "Échec : {list}. Ils gardent l’icône de Chrome ; vous pouvez la charger à la main dans l’éditeur du favori.",
+    skyWeather: "Météo dans le ciel", skyWeatherOff: "Désactivée", skyWeatherLive: "Comme à votre fenêtre", skyWeatherLiveNote: "Les nuages, la pluie et la neige suivent les prévisions de votre lieu. Le ciel bouge alors sans cesse, ce qui consomme plus de batterie.", skyWeatherNoCity: "Choisissez un lieu sous Météo dans les réglages, et le ciel le suivra.", skyWeatherFixedNote: "Cette météo reste, quel que soit le temps dehors. Le ciel bouge alors sans cesse, ce qui consomme plus de batterie.", weatherStrength: "Intensité de la météo", wxBlizzard: "Blizzard",
   },
 };
 

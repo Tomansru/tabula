@@ -9,6 +9,7 @@
 //   update(cfg, reason)         optional: settings, light/dark mode, weather or location changed
 //   deactivate()                stop and remove everything it added
 //   ownsMode, isDark()          optional: the theme decides light/dark itself (the Mode setting is then locked)
+//   wantsWeather()              optional: the theme needs the forecast even when the weather widget is hidden
 //
 // Adding a theme = a new file next to this one + one line in THEMES.
 import { settings as S, setSetting } from '../store.js';

@@ -66,9 +66,10 @@ export function sunSchedule() {
 
 export const hhmm = h => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60) % 60).padStart(2, '0')}`;
 
-export async function refreshWeather(force = false) {
+// wanted: something other than the widget needs the forecast (the Breathing sky's weather).
+export async function refreshWeather(force = false, wanted = false) {
   const loc = settings.location;
-  if (!loc || !settings.showWeather) return null;
+  if (!loc || !(settings.showWeather || wanted)) return null;
   // Caches from before the detailed forecast was stored count as stale.
   const fresh = currentWeather() && Date.now() - cache.ts < TTL && 'hourly' in cache;
   if (fresh && !force) return cache;

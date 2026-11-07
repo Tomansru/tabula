@@ -19,6 +19,7 @@ Spacing, corners, type and colour follow a small brand book: [`docs/brand.html`]
 - **Bookmarks** with crisp site icons: on save the extension briefly asks for access to that one site, reads its `apple-touch-icon` / web-manifest / SVG icons, stores the best one as a 128 px image and immediately gives the access back. You can also use an emoji or a coloured letter. Drag tiles to reorder; drop a link from the address bar onto the grid to add it.
 - **Daily TODOs** on the right (can be hidden). Every day starts with a fresh *Today* list. History collapses by age: days of the current week → weeks of the current month → months of the current year → years. Empty days are not shown. Unfinished items from the past can be moved to today in one click. Double-click to edit.
   - **Breathing sky** (grown from the daylight study in the [`lab` branch](https://github.com/Tomansru/tabula/tree/lab)): an atmosphere painted from the real solar altitude for your location and season (NOAA formulas), a soft or atmospheric sun disc, and at night a star sphere with real catalogue stars (Polaris, the Big Dipper, Orion, the Southern Cross) turning with local sidereal time. Its own settings: sun style, disc sharpness, light strength, horizon height, starry sky location, looking direction, starlight. It sets light/dark by itself.
+    Optional **weather in the sky** (off by default): *as outside your window* follows the forecast's weather code and wind, or one kind of weather can be chosen to stay. Clouds are drawn by one WebGL2 shader over the painted sky and take their colour from it, so a sunset stays a sunset under any weather; rain splashes on the search bar, snow slowly settles on it and on the bookmark icons, lightning lights the clouds from within. The text switches between light and dark by what is actually behind it. With *reduced motion* nothing moves and there is no lightning; without WebGL2 rain and snow still fall.
   - **Your picture**: any image (upload or URL) with *Dim* and *Blur* sliders so text stays readable; no animation.
 - **Languages**: English, Русский, Deutsch, Español, Français.
 - **Export / import** of settings, bookmarks and TODOs as JSON.
@@ -44,7 +45,7 @@ Everything lives in the browser (`localStorage`, the background image in Indexed
 
 | When | Where | What is sent |
 | --- | --- | --- |
-| Weather refresh (≤ every 20 min) | `api.open-meteo.com` | coordinates rounded to 0.01° |
+| Weather refresh (≤ every 20 min; also with the widget hidden when the sky follows the weather) | `api.open-meteo.com` | coordinates rounded to 0.01° |
 | Searching a city | `geocoding-api.open-meteo.com` | the search text |
 | "Use my location" | `nominatim.openstreetmap.org` | rounded coordinates, once |
 | Adding a bookmark icon | the bookmarked site itself | a cookieless request for its page and icon |
@@ -77,7 +78,7 @@ js/weather.js      Open-Meteo, the weather widget, sunrise/sunset schedule
 js/weatherModal.js the forecast window
 js/sunArc.js       the day's sun path in the forecast window
 js/sun.js          sun position from sunrise/sunset, "sun" theme rule
-js/themes/         background themes: index.js (registry), sky.js, picture.js, daylight/ (astronomy, stars, painter)
+js/themes/         background themes: index.js (registry), sky.js, picture.js, daylight/ (astronomy, stars, painter, weather/)
 js/todos.js        daily list and collapsing history
 js/bookmarks.js    tiles, drag & drop, high-res icon discovery
 js/settings.js     settings drawer, export/import

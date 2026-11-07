@@ -8,6 +8,7 @@ import { sunArc, sunLeft, localNow } from '../js/sunArc.js';
 import { setLang } from '../js/i18n.js';
 import { dayCaption } from '../js/captions.js';
 import { settings, migrateSettings } from '../js/store.js';
+import { CONDITIONS, DIALS, conditionById, targetDials, readForecast } from '../js/themes/daylight/weather/conditions.js';
 
 // setLang() also sets <html lang>; give it an element to set.
 globalThis.document ??= { documentElement: {} };
@@ -93,4 +94,44 @@ test('old settings move to the mode and the picture theme', () => {
   assert.equal(s.theme, 'picture');
   assert.deepEqual(s.themes.picture, { src: 'url', url: 'https://example.com/a.jpg', dim: 40, blur: 2 });
   assert.ok(!('bgType' in s));
+});
+
+test('every WMO code Open-Meteo can send has weather for the sky', () => {
+  const expected = { 0: 'clear', 1: 'fair', 2: 'cloudy', 3: 'overcast', 45: 'fog', 48: 'fog', 51: 'drizzle', 57: 'drizzle', 61: 'rain', 67: 'rain', 80: 'rain', 82: 'rain', 71: 'snow', 77: 'snow', 85: 'snow', 86: 'snow', 95: 'storm', 96: 'storm', 99: 'storm' };
+  for (const [code, id] of Object.entries(expected)) assert.equal(readForecast(+code, 2, 3).condition.id, id, `code ${code}`);
+  assert.equal(readForecast(1234).condition.id, 'clear'); // a code that does not exist yet leaves the sky alone
+});
+
+test('snow in a strong wind is a blizzard, rain in a strong wind is still rain', () => {
+  assert.equal(readForecast(73, 4, 8).condition.id, 'snow');
+  assert.equal(readForecast(73, 11, 14).condition.id, 'blizzard');
+  assert.equal(readForecast(73, 6, 17).condition.id, 'blizzard');
+  assert.equal(readForecast(63, 20, 30).condition.id, 'rain');
+});
+
+test('a forecast from an older cache, without wind, still works', () => {
+  const { condition, force, wind } = readForecast(63, NaN, NaN);
+  assert.equal(condition.id, 'rain');
+  assert.equal(wind, null);
+  assert.equal(targetDials(condition, { force, wind }).wind, condition.wind);
+});
+
+test('no dial goes over 1, whatever the strength and the forecast: drops and flakes are a fixed set', () => {
+  for (const c of CONDITIONS) {
+    for (const d of Object.values(targetDials(c, { strength: 1.3, force: 1.3, wind: 40 }))) assert.ok(d >= 0 && d <= 1, c.id);
+    assert.ok(targetDials(c, { strength: 1.3 }).veil <= .94, `${c.id} keeps a touch of sky`);
+    assert.deepEqual(Object.keys(targetDials(c)), DIALS);
+  }
+});
+
+test('heavier readings of the same weather bring more of it, but the same clouds', () => {
+  const rain = conditionById('rain');
+  const light = targetDials(rain, { force: readForecast(61).force }), heavy = targetDials(rain, { force: readForecast(65).force });
+  assert.ok(light.rain < heavy.rain);
+  assert.equal(light.cover, heavy.cover);
+});
+
+test('the real wind leans the sky', () => {
+  const rain = conditionById('rain');
+  assert.ok(targetDials(rain, { wind: 14 }).wind > targetDials(rain, { wind: 1 }).wind);
 });
