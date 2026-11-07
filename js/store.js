@@ -27,6 +27,7 @@ const DEFAULTS = {
   h24: defaultH24(),
   seconds: false,
   showWeather: true,
+  weatherFx: false, // weather on the background, for themes that draw it; which weather is the theme's own setting
   units: 'c',
   showTodos: true,
   todoCard: false,  // cards behind the side widgets (weather, tasks)
@@ -52,6 +53,13 @@ export function migrateSettings(s) {
       s.themes.picture = { src: s.bgType, url: s.bgUrl || '', dim: s.bgDim ?? 35, blur: s.bgBlur ?? 0 };
     }
     for (const k of ['bgType', 'bgUrl', 'bgDim', 'bgBlur', 'skyFx']) delete s[k];
+  }
+  // The Breathing sky used to switch its weather off itself. Now the main settings allow weather at all, and the
+  // theme only picks which: a sky that had weather keeps it, one that had it off starts from the live forecast.
+  const sky = s.themes?.daylight;
+  if (s.weatherFx === undefined && sky && 'weather' in sky) {
+    s.weatherFx = sky.weather !== 'off';
+    if (sky.weather === 'off') delete sky.weather;
   }
   return s;
 }

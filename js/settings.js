@@ -36,8 +36,7 @@ export function initSettings() {
       if (b) { setSetting({ [key]: b.dataset.v }); syncSettingsUI(); }
     });
   }
-  // Weather effects on the clock are switched off until they are redesigned together with the sky.
-  for (const [sel, key] of [['#sH24', 'h24'], ['#sSec', 'seconds'], ['#sWx', 'showWeather'], ['#sTodoCard', 'todoCard'], ['#sTodos', 'showTodos'], ['#sBmNewTab', 'bmNewTab'], ['#sSearch', 'showSearch'], ['#sCaps', 'captions'], ['#sLift', 'tileLift']]) {
+  for (const [sel, key] of [['#sH24', 'h24'], ['#sSec', 'seconds'], ['#sWx', 'showWeather'], ['#sWxFx', 'weatherFx'],['#sTodoCard', 'todoCard'], ['#sTodos', 'showTodos'], ['#sBmNewTab', 'bmNewTab'], ['#sSearch', 'showSearch'], ['#sCaps', 'captions'], ['#sLift', 'tileLift']]) {
     $(sel).addEventListener('change', e => setSetting({ [key]: e.target.checked }));
   }
 
@@ -75,7 +74,6 @@ export function syncSettingsUI() {
   $('#sModeNote').hidden = !locked;
   $('#sH24').checked = S.h24;
   $('#sSec').checked = S.seconds;
-  $('#sFx').checked = false;
   $('#sSearch').checked = S.showSearch;
   const engine = $('#sEngine');
   engine.replaceChildren(...Object.entries(ENGINES).map(([id, [name]]) =>
@@ -83,6 +81,10 @@ export function syncSettingsUI() {
   engine.value = ENGINES[S.searchEngine] ? S.searchEngine : 'google';
   engine.disabled = !S.showSearch;
   $('#sWx').checked = S.showWeather;
+  // Weather on the background is allowed here; which weather is up to the theme, and not every theme draws it.
+  $('#sWxFx').checked = S.weatherFx;
+  const drawsWeather = !!activeTheme()?.drawsWeather;
+  $('#sWxFxNote').textContent = drawsWeather ? t('weatherFxNote') : t('weatherFxNone', { theme: t(THEMES.find(x => x.drawsWeather)?.name) });
   $('#sTodoCard').checked = S.todoCard;
   $('#sTodos').checked = S.showTodos;
   $('#sBmNewTab').checked = S.bmNewTab;

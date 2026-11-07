@@ -21,8 +21,11 @@ function sunPlace() {
 }
 
 const LOOK = { sunStyle: 'atmospheric', sharpness: 0.8, haze: 0.5, tint: 0, warmth: 1, horizon: 0.68, starlight: 1, bearing: 'pole', starPlace: 'same' };
-// weather: 'off', 'live' (the forecast for your location), or the id of one condition that stays.
-const DEFAULTS = { ...LOOK, weather: 'off', weatherStrength: 1 };
+// weather: 'live' (the forecast for your location) or the id of one condition that stays. Whether there is weather
+// at all is the main Weather effects switch (settings.weatherFx), not the theme's.
+const DEFAULTS = { ...LOOK, weather: 'live', weatherStrength: 1 };
+// The weather to draw now, or 'off'. An 'off' left in the theme's own settings by an older version means the forecast.
+const weatherOf = cfg => (!S.weatherFx ? 'off' : cfg.weather === 'off' ? 'live' : cfg.weather);
 // "Back to soft light" restores the original demo's gentler look; it is about the light, so the weather stays as it is.
 const SOFT = { ...LOOK, sunStyle: 'soft', sharpness: 0.45, warmth: 0.85, starlight: 0.8 };
 
@@ -38,7 +41,7 @@ function stateOf(cfg) {
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const root = document.documentElement;
 let sky = null, cfgNow = DEFAULTS, timer = 0, visualTime = 0, last = 0;
-let weather = null, grain = null, skyCanvas = null, weatherLayers = [], rafId = 0, softId = 0;
+let weather = null, grain = null, skyCanvas = null, weatherLayers = [], rafId = 0, softId = 0, weatherLive = false;
 
 const sunIsLow = () => solar(Date.now(), sunPlace()).altitude <= 5;
 
@@ -62,8 +65,8 @@ function frame() {
 
 // What the settings ask for right now, as dials. Until a forecast is known the sky stays as it is.
 function weatherGoal(cfg) {
-  const strength = cfg.weatherStrength;
-  if (cfg.weather !== 'live') return targetDials(conditionById(cfg.weather), { strength });
+  const strength = cfg.weatherStrength, kind = weatherOf(cfg);
+  if (kind !== 'live') return targetDials(conditionById(kind), { strength });
   const w = currentWeather();
   if (!w) return targetDials(conditionById('clear'), { strength });
   const toMs = S.units === 'f' ? 0.44704 : 1;
@@ -88,7 +91,7 @@ function stopWeather() {
 }
 
 function syncWeather(cfg, instant) {
-  if (cfg.weather === 'off') {
+  if (weatherOf(cfg) === 'off') {
     if (weather) { stopWeather(); root.dataset.theme = sunIsLow() ? 'dark' : 'light'; }
     return;
   }
@@ -135,8 +138,9 @@ export default {
     return weather?.inkDark ?? sunIsLow();
   },
   wantsWeather() {
-    return cfgNow.weather === 'live';
+    return weatherOf(cfgNow) === 'live';
   },
+  drawsWeather: true,
 
   preview(el, cfg) {
     el.replaceChildren();
@@ -171,9 +175,11 @@ export default {
     const note = h('p', { class: 'note' });
     const after = key => {
       if (key === 'weather') {
-        strengthRow.hidden = cfg.weather === 'off';
-        weatherNote.hidden = cfg.weather === 'off';
-        weatherNote.textContent = cfg.weather === 'off' ? '' : t(cfg.weather !== 'live' ? 'skyWeatherFixedNote' : S.location ? 'skyWeatherLiveNote' : 'skyWeatherNoCity');
+        // With weather effects off in the main settings the choice stays visible, so it is clear where to turn it on.
+        const kind = weatherOf(cfg);
+        weatherSel.disabled = kind === 'off';
+        strengthRow.hidden = kind === 'off';
+        weatherNote.textContent = t(kind === 'off' ? 'skyWeatherOffNote' : kind !== 'live' ? 'skyWeatherFixedNote' : S.location ? 'skyWeatherLiveNote' : 'skyWeatherNoCity');
         return;
       }
       if (key !== 'sunStyle') return;
@@ -201,7 +207,8 @@ export default {
 
     const starSel = select('starPlace', [['same', t('starSame')], ...PLACES.map((p, i) => [String(i), `${placeName(p)} · ${Math.abs(p.lat).toFixed(0)}°${p.lat < 0 ? 'S' : 'N'}`])]);
     const bearingSel = select('bearing', [['pole', t('bearPole')], ['0', t('north')], ['90', t('east')], ['180', t('south')], ['270', t('west')]]);
-    const weatherSel = select('weather', [['off', t('skyWeatherOff')], ['live', t('skyWeatherLive')], ...CONDITIONS.map(c => [c.id, t(c.label)])]);
+    const weatherSel = select('weather', [['live', t('skyWeatherLive')], ...CONDITIONS.map(c => [c.id, t(c.label)])]);
+    if (cfg.weather === 'off') weatherSel.value = 'live';
     const weatherNote = h('p', { class: 'note' });
     const strengthRow = slider('weatherStrength', 0.3, 1.3, pct);
     after('weather');
@@ -235,15 +242,17 @@ export default {
     addEventListener('resize', onResize);
     document.addEventListener('visibilitychange', onVisible);
     syncWeather(cfg, true); // the first frame already shows the weather
-    if (cfg.weather === 'live') pullForecast();
+    weatherLive = weatherOf(cfg) === 'live';
+    if (weatherLive) pullForecast();
     frame();
   },
 
   update(cfg) {
-    const wasLive = cfgNow.weather === 'live';
+    const wasLive = weatherLive;
     cfgNow = cfg;
+    weatherLive = weatherOf(cfg) === 'live';
     syncWeather(cfg, false);
-    if (cfg.weather === 'live' && !wasLive) pullForecast();
+    if (weatherLive && !wasLive) pullForecast();
     frame();
   },
 

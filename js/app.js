@@ -126,6 +126,7 @@ on('settings', p => {
   if ('bmNewTab' in p) renderBookmarks();
   if ('h24' in p || 'seconds' in p) tick();
   if ('showWeather' in p) { updateWeatherUI(); pullWeather(); }
+  if ('weatherFx' in p) { notifyThemes('weather'); pullWeather(); }
   if ('units' in p || 'location' in p) { updateWeatherUI(); pullWeather(true); }
 });
 

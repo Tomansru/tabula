@@ -74,11 +74,23 @@ test('the day caption: left until sunset, passed after it', () => {
 });
 
 test('defaults for a new install', () => {
-  const { mode, theme, showSearch, searchEngine, bmNewTab, captions, typeset, todoCard, showWeather, showTodos } = settings;
+  const { mode, theme, showSearch, searchEngine, bmNewTab, captions, typeset, todoCard, showWeather, showTodos, weatherFx } = settings;
   assert.deepEqual(
-    { mode, theme, showSearch, searchEngine, bmNewTab, captions, typeset, todoCard, showWeather, showTodos },
-    { mode: 'sun', theme: 'daylight', showSearch: true, searchEngine: 'google', bmNewTab: true, captions: true, typeset: 'air', todoCard: false, showWeather: true, showTodos: true },
+    { mode, theme, showSearch, searchEngine, bmNewTab, captions, typeset, todoCard, showWeather, showTodos, weatherFx },
+    { mode: 'sun', theme: 'daylight', showSearch: true, searchEngine: 'google', bmNewTab: true, captions: true, typeset: 'air', todoCard: false, showWeather: true, showTodos: true, weatherFx: false },
   );
+});
+
+test('weather effects move to the main settings; the theme keeps only which weather', () => {
+  const had = migrateSettings({ themes: { daylight: { weather: 'snow', sunStyle: 'soft' } } });
+  assert.equal(had.weatherFx, true);
+  assert.equal(had.themes.daylight.weather, 'snow');
+  const off = migrateSettings({ themes: { daylight: { weather: 'off', sunStyle: 'soft' } } });
+  assert.equal(off.weatherFx, false);
+  assert.deepEqual(off.themes.daylight, { sunStyle: 'soft' }, 'the theme falls back to the live forecast');
+  assert.ok(!('weatherFx' in migrateSettings({ mode: 'sun' })), 'a new install gets the default');
+  // Once moved, the main switch is the user's own: an old value in the theme no longer decides it.
+  assert.equal(migrateSettings({ weatherFx: false, themes: { daylight: { weather: 'rain' } } }).weatherFx, false);
 });
 
 test('default bookmarks use Chrome\'s cached icons; no site logos are bundled', async () => {
