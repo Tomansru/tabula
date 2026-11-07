@@ -263,10 +263,12 @@ export class Clouds {
     this.drawn = null;
   }
   get ok() { return !!this.gl; }
-  // Soft shapes: well under the screen's resolution is plenty, and keeps a new tab cheap.
+  // Soft shapes: well under the screen's resolution is plenty, and keeps a new tab cheap. Against a full-size render,
+  // 0.6 of the window comes out within a shade of 0.8 for a little over half the pixels; at most 885 wide, so a
+  // large screen costs no more than a 1475 px window.
   resize() {
     if (!this.gl) return;
-    const w = innerWidth, h = innerHeight, scale = Math.min(.8, 1180 / w);
+    const w = innerWidth, h = innerHeight, scale = Math.min(.6, 885 / w);
     this.canvas.width = Math.round(w * scale); this.canvas.height = Math.round(h * scale);
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     this.aspect = w / h;

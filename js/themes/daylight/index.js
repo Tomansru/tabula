@@ -41,7 +41,7 @@ function stateOf(cfg) {
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const root = document.documentElement;
 let sky = null, cfgNow = DEFAULTS, timer = 0, visualTime = 0, last = 0;
-let weather = null, grain = null, skyCanvas = null, weatherLayers = [], rafId = 0, softId = 0, weatherLive = false;
+let weather = null, grain = null, skyCanvas = null, weatherLayers = [], rafId = 0, weatherLive = false;
 
 const sunIsLow = () => solar(Date.now(), sunPlace()).altitude <= 5;
 
@@ -82,8 +82,8 @@ function startWeather() {
 }
 
 function stopWeather() {
-  cancelAnimationFrame(rafId); clearTimeout(softId);
-  rafId = softId = 0;
+  cancelAnimationFrame(rafId);
+  rafId = 0;
   weather?.destroy();
   weather = null;
   weatherLayers.forEach(c => c.remove());
@@ -102,23 +102,19 @@ function syncWeather(cfg, instant) {
 // The sky wants the forecast even when the weather widget is hidden.
 const pullForecast = () => refreshWeather(false, true).catch(e => console.debug('[tabula] weather', e));
 
-// Between the theme's frames: 60 a second while something falls, a slower beat for clouds alone, nothing on a still sky.
-// 60 frames a second are smooth enough for rain and snow; a 120 Hz screen would double the work, so there it skips every other.
-const FULL_MS = 1000 / 60 - 3;
+// Between the theme's frames, on the display's own beat: 60 a second while something falls, 20 for clouds alone,
+// nothing on a still sky. 60 are smooth enough for rain and snow; a 120 Hz screen would double the work, so there it
+// skips every other. Slow clouds need no more than 20, and taken on the display's beat even those move evenly.
+const GAP = { full: 1000 / 60 - 3, soft: 1000 / 20 - 3 }; // ms; a little under, as frames come a hair early or late
 let pumped = 0;
-function pump(now = performance.now()) {
-  rafId = softId = 0;
+function pump(now) {
+  rafId = 0;
   if (!weather || document.hidden) return;
-  if (now - pumped < FULL_MS) { rafId = requestAnimationFrame(pump); return; }
-  pumped = now;
-  weather.step(now);
+  if (now - pumped >= GAP[weather.pace]) { pumped = now; weather.step(now); }
   armPump();
 }
 function armPump() {
-  if (rafId || softId || !weather || document.hidden) return;
-  const pace = weather.pace;
-  if (pace === 'full') rafId = requestAnimationFrame(pump);
-  else if (pace === 'soft') softId = setTimeout(pump, 48);
+  if (!rafId && weather && !document.hidden && GAP[weather.pace]) rafId = requestAnimationFrame(pump);
 }
 
 const onResize = () => { sky?.resize(); weather?.resize(); frame(); };
