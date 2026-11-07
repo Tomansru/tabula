@@ -102,11 +102,16 @@ function syncWeather(cfg, instant) {
 // The sky wants the forecast even when the weather widget is hidden.
 const pullForecast = () => refreshWeather(false, true).catch(e => console.debug('[tabula] weather', e));
 
-// Between the theme's frames: every display frame while something falls, a slower beat for clouds alone, nothing on a still sky.
-function pump(now) {
+// Between the theme's frames: 60 a second while something falls, a slower beat for clouds alone, nothing on a still sky.
+// 60 frames a second are smooth enough for rain and snow; a 120 Hz screen would double the work, so there it skips every other.
+const FULL_MS = 1000 / 60 - 3;
+let pumped = 0;
+function pump(now = performance.now()) {
   rafId = softId = 0;
   if (!weather || document.hidden) return;
-  weather.step(now ?? performance.now());
+  if (now - pumped < FULL_MS) { rafId = requestAnimationFrame(pump); return; }
+  pumped = now;
+  weather.step(now);
   armPump();
 }
 function armPump() {
