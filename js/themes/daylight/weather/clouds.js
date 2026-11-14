@@ -17,7 +17,7 @@ precision highp float;
 in vec2 vUv;
 out vec4 frag;
 uniform sampler2D uNoise, uSky;
-uniform vec2 uRes, uSun, uDrift, uFlashAt;
+uniform vec2 uSun, uDrift, uFlashAt;
 uniform float uTime, uHorizon, uSunVis, uDay, uAspect, uOpaque;
 uniform vec3 uLit, uShade, uGlow, uVeilCol;
 uniform float uCover, uPuff, uCirrus, uVeil, uFog, uShafts, uRays, uBlow, uFlash, uWind;
@@ -45,9 +45,11 @@ float field(vec2 p, float morph) {
   return mix(sheet, heap + .03, uPuff);
 }
 
+// Each layer leaves early where it adds nothing, below the horizon above all: a third of the screen where the
+// clouds would otherwise be worked out in full and then multiplied by zero.
 vec4 cirrus(vec2 uv, vec3 sky) {
-  if (uCirrus < .005) return vec4(0.);
   float d = uHorizon - uv.y;
+  if (uCirrus < .005 || d <= 0.) return vec4(0.);
   vec2 p = deck(uv, .3) * vec2(1., .62) + uDrift * .45;
   vec2 tilt = vec2(p.x * .94 + p.y * .34, p.y * .94 - p.x * .34);
   vec4 big = texture(uNoise, tilt * .05);
@@ -64,6 +66,9 @@ vec4 clouds(vec2 uv, vec3 sky, vec3 hazeLine, vec2 toSun, float dist, out float 
   body = 0.;
   if (uCover < .004) return vec4(0.);
   float d = uHorizon - uv.y;
+  // Lightning still wants the cloud's shape down there, so a flash takes the long way.
+  float rise = smoothstep(-.07, .1, d);
+  if (rise <= 0. && uFlash <= .002) return vec4(0.);
   float th = mix(.74, .23, sqrt(uCover));
   float soft = mix(.1, .3, uCover) * mix(1.5, .62, uPuff);
   // Light comes along the screen towards the sun; with no sun up, from above.
@@ -91,7 +96,7 @@ vec4 clouds(vec2 uv, vec3 sky, vec3 hazeLine, vec2 toSun, float dist, out float 
     col += uGlow * (near * (.2 + thin * 1.05) + wide * thin * .2);
     // Far cloud dissolves into the horizon's haze.
     col = mix(hazeLine, col, .2 + .8 * smoothstep(0., .17, d));
-    float a = den * (.78 - float(i) * .08) * smoothstep(-.07, .1, d);
+    float a = den * (.78 - float(i) * .08) * rise;
     acc += vec4(col * a, a) * (1. - acc.a);
     if (i == 0) body = n;
     if (acc.a > .985) break;
@@ -100,8 +105,8 @@ vec4 clouds(vec2 uv, vec3 sky, vec3 hazeLine, vec2 toSun, float dist, out float 
 }
 
 vec4 curtains(vec2 uv, vec3 skyLine) {
-  if (uShafts < .005) return vec4(0.);
   float d = uHorizon - uv.y;
+  if (uShafts < .005 || d >= .52 || d <= -.1) return vec4(0.);
   float h = smoothstep(.52, .1, d) * smoothstep(-.1, .03, d);
   float x = uv.x * uAspect + (uv.y - uHorizon) * (.1 + uWind * .34);
   float n = texture(uNoise, vec2(x * .34 - uDrift.x * .05, uTime * .0012)).r * .7
@@ -263,9 +268,10 @@ export class Clouds {
     this.drawn = null;
   }
   get ok() { return !!this.gl; }
-  // Soft shapes: well under the screen's resolution is plenty, and keeps a new tab cheap. Against a full-size render,
-  // 0.6 of the window comes out within a shade of 0.8 for a little over half the pixels; at most 885 wide, so a
-  // large screen costs no more than a 1475 px window.
+  // Soft shapes: well under the screen's resolution is plenty, and keeps a new tab cheap. At 0.6 of the window a
+  // midday sky of separate clouds, the sharpest there is, differs from a full Retina render by more than 3 of 255
+  // in 0.3% of its pixels (11 at most, in the thin streaks along the horizon), for a twelfth of the pixels.
+  // At most 885 wide, so a large screen costs no more than a 1475 px window.
   resize() {
     if (!this.gl) return;
     const w = innerWidth, h = innerHeight, scale = Math.min(.6, 885 / w);
@@ -338,7 +344,6 @@ export class Clouds {
     const gl = this.gl, u = this.u;
     if (!gl) return;
     if (!aside) this.drawn = p;
-    gl.uniform2f(u.uRes, this.canvas.width, this.canvas.height);
     gl.uniform1f(u.uAspect, this.aspect);
     gl.uniform1f(u.uOpaque, aside ? 1 : 0);
     gl.uniform1f(u.uTime, p.time);

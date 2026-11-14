@@ -9,6 +9,13 @@ import { apcaY, pickInk, haloFor } from './ink.js';
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const root = document.documentElement;
 const MORPH = 1.25; // seconds: how slowly one sky turns into another
+// How often it steps at each pace, in ms: 60 a second while something falls, 20 for clouds alone. 60 are smooth
+// enough for rain and snow, and a 120 Hz screen would only double the work; slow clouds need no more than 20.
+// Under rain the clouds are redrawn on every other step. All a little under the round figure, as display frames
+// come a hair early or late.
+const SLACK = 3;
+const EVERY = { full: 1000 / 60 - SLACK, soft: 1000 / 20 - SLACK };
+const CLOUDS_EVERY = 1000 / 30 - SLACK;
 const NIGHT_SNOW = [.62, .7, .86];
 // From what depth (0 far … 1 near) drops and flakes land on a surface rather than fall past it. Under the search bar
 // the icons share the near drops with it; on their own they catch about twice as much rain and snow.
@@ -49,6 +56,7 @@ export class SkyWeather {
     this.driftY = -(seconds * .003 % 4096);
     this.visible = 0;
     this.last = performance.now();
+    this.stepped = 0;
     this.flashAt = Infinity; this.flashStart = -1; this.flashX = .5; this.flashY = .3;
     this.gpuDue = 0; this.inkDue = 0; this.surfacesDue = 0;
     this.glClear = false; this.wasBusy = false;
@@ -94,6 +102,13 @@ export class SkyWeather {
     this.gpuDue = 0;
     this.surfacesDue = 0;
     this.placesDue = 0;
+  }
+
+  // On a display frame: a step, if this pace's time for one has come.
+  beat(now) {
+    if (now - this.stepped < EVERY[this.pace]) return;
+    this.stepped = now;
+    this.step(now);
   }
 
   step(now) {
@@ -150,8 +165,7 @@ export class SkyWeather {
     }
     const anything = d.cover + d.veil + d.fog + d.cirrus + d.blow > .004 || flash > 0;
     if (!this.clouds.ok || (!anything && this.glClear) || (now < this.gpuDue && flash <= 0)) return;
-    // Soft shapes drift slowly: a dozen and a half frames a second are plenty for them alone.
-    this.gpuDue = now + (this.pace === 'full' ? 30 : 48);
+    this.gpuDue = now + (this.pace === 'full' ? CLOUDS_EVERY : 0);
     const sun = this.sun, e = sun.altitude, at = this.lightFrom(sun);
     this.clouds.render({
       ...d, time: this.time, light, flash, flashX: this.flashX, flashY: this.flashY,
