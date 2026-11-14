@@ -9,6 +9,7 @@ import { currentWeather, refreshWeather } from '../../weather.js';
 import { Sky } from './sky.js';
 import { CONDITIONS, conditionById, targetDials, readForecast } from './weather/conditions.js';
 import { SkyWeather } from './weather/index.js';
+import { PageInk } from './pageInk.js';
 
 const PLACE_EN = { 'Белград': 'Belgrade', 'Рейкьявик': 'Reykjavík', 'Тромсё': 'Tromsø', 'Нью-Йорк': 'New York', 'Сингапур': 'Singapore', 'Кейптаун': 'Cape Town', 'Сидней': 'Sydney' };
 const placeName = p => (getLang() === 'ru' ? p.name : PLACE_EN[p.name] || p.name);
@@ -39,9 +40,9 @@ function stateOf(cfg) {
 }
 
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const root = document.documentElement;
 let sky = null, cfgNow = DEFAULTS, timer = 0, visualTime = 0, last = 0;
 let weather = null, grain = null, skyCanvas = null, weatherLayers = [], rafId = 0, weatherLive = false;
+let ink = null, inkDue = 0, sample = null;
 
 const sunIsLow = () => solar(Date.now(), sunPlace()).altitude <= 5;
 
@@ -58,7 +59,23 @@ function frame() {
     weather.observe(sun, state);
     weather.step(now);
     armPump();
+  } else if (now >= inkDue) {
+    inkDue = now + INK_EVERY;
+    ink.read(skyPixels(), SAMPLE.w, SAMPLE.h, sun.altitude <= 5);
   }
+}
+
+// Without weather the painted sky is all there is behind the text, and it changes as slowly as the sun moves:
+// a small copy of it now and then is enough for the ink. (With weather on, the clouds hand over their own.)
+const SAMPLE = { w: 96, h: 54 }, INK_EVERY = 20000;
+function skyPixels() {
+  if (!sample) {
+    const c = h('canvas', { width: SAMPLE.w, height: SAMPLE.h });
+    sample = c.getContext('2d', { willReadFrequently: true });
+    sample.imageSmoothingQuality = 'high';
+  }
+  sample.drawImage(skyCanvas, 0, 0, SAMPLE.w, SAMPLE.h);
+  return sample.getImageData(0, 0, SAMPLE.w, SAMPLE.h).data;
 }
 
 /* ---------- weather: everything here runs only while the setting is on ---------- */
@@ -78,7 +95,7 @@ function startWeather() {
   const clouds = h('canvas', { id: 'weatherSky', 'aria-hidden': 'true' }), falling = h('canvas', { id: 'falling', 'aria-hidden': 'true' });
   grain.before(clouds, falling);
   weatherLayers = [clouds, falling];
-  weather = new SkyWeather(clouds, falling, skyCanvas);
+  weather = new SkyWeather(clouds, falling, skyCanvas, ink);
 }
 
 function stopWeather() {
@@ -88,11 +105,12 @@ function stopWeather() {
   weather = null;
   weatherLayers.forEach(c => c.remove());
   weatherLayers = [];
+  inkDue = 0; // the ink is the painted sky's again
 }
 
 function syncWeather(cfg, instant) {
   if (weatherOf(cfg) === 'off') {
-    if (weather) { stopWeather(); root.dataset.theme = sunIsLow() ? 'dark' : 'light'; }
+    if (weather) stopWeather();
     return;
   }
   if (!weather) startWeather();
@@ -114,7 +132,7 @@ function armPump() {
   if (!rafId && weather && !document.hidden && weather.pace !== 'still') rafId = requestAnimationFrame(pump);
 }
 
-const onResize = () => { sky?.resize(); weather?.resize(); frame(); };
+const onResize = () => { sky?.resize(); weather?.resize(); ink?.remeasure(); inkDue = 0; frame(); };
 const onVisible = () => {
   if (document.hidden) return;
   last = performance.now();
@@ -131,9 +149,9 @@ export default {
 
   // Light text over the dark sky, dark text over the pale day: the same threshold as the demo.
   ownsMode: true,
-  // Under weather the clouds have a say in that too.
+  // By the sun until the sky has been looked at; then by what is drawn behind the text.
   isDark() {
-    return weather?.inkDark ?? sunIsLow();
+    return ink?.dark ?? sunIsLow();
   },
   wantsWeather() {
     return weatherOf(cfgNow) === 'live';
@@ -236,6 +254,8 @@ export default {
     stage.append(a, s, grain);
     sky = new Sky(a, s);
     skyCanvas = a;
+    ink = new PageInk();
+    inkDue = 0;
     last = performance.now();
     addEventListener('resize', onResize);
     document.addEventListener('visibilitychange', onVisible);
@@ -250,6 +270,7 @@ export default {
     cfgNow = cfg;
     weatherLive = weatherOf(cfg) === 'live';
     syncWeather(cfg, false);
+    ink.remeasure(); inkDue = 0; // a setting may have moved the page or the sky
     if (weatherLive && !wasLive) pullForecast();
     frame();
   },
@@ -259,6 +280,8 @@ export default {
     removeEventListener('resize', onResize);
     document.removeEventListener('visibilitychange', onVisible);
     stopWeather();
+    ink?.destroy();
+    ink = null;
     sky = null;
   },
 };

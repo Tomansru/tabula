@@ -1,4 +1,4 @@
-// Which ink reads best over a clouded sky, and what halo helps it. Pure: it gets the pixels behind each piece of
+// Which ink reads best over the sky as it is drawn, and what halo helps it. Pure: it gets the pixels behind each piece of
 // text and decides; reading the pixels is the caller's job.
 //
 // Contrast is APCA's (the perceptual contrast that WCAG 3 drafts use) rather than WCAG 2's ratio: on mid-grey skies

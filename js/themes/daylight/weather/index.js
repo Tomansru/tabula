@@ -1,13 +1,11 @@
 // Weather over the Breathing sky: the theme paints its sky exactly as before, and this puts clouds and what falls
-// on top of it. It keeps the dials moving towards the current weather and tells the page which ink reads best.
+// on top of it. It keeps the dials moving towards the current weather and shows the page's ink the sky it made.
 import { clamp, smooth } from '../astronomy.js';
-import { DIALS, cloudLight, luminance } from './conditions.js';
+import { DIALS, cloudLight } from './conditions.js';
 import { Clouds } from './clouds.js';
 import { Precipitation } from './precipitation.js';
-import { apcaY, pickInk, haloFor } from './ink.js';
 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-const root = document.documentElement;
 const MORPH = 1.25; // seconds: how slowly one sky turns into another
 // How often it steps at each pace, in ms: 60 a second while something falls, 20 for clouds alone. 60 are smooth
 // enough for rain and snow, and a 120 Hz screen would only double the work; slow clouds need no more than 20.
@@ -25,23 +23,10 @@ const LAND = {
   iconsAlone: { drops: .52, flakes: .42 },
 };
 
-// The text that sits right on the sky. need: the APCA contrast it reads well at (large digits need less);
-// weight: how much it matters when the inks are compared. Widgets on cards are not on the sky.
-const TEXT = [
-  ['.clock', 45, .6], ['#date', 60, 1], ['.frame .cap', 55, .7], ['.tile-label', 60, .8],
-  ['html:not(.todo-card) .weather', 60, 1], ['html:not(.todo-card) .todos-card', 60, 1],
-];
-function textPlaces() {
-  const out = [];
-  for (const [sel, need, weight] of TEXT) for (const el of document.querySelectorAll(sel)) {
-    const r = el.getBoundingClientRect();
-    if (r.width && r.height && r.bottom > 0 && r.top < innerHeight) out.push({ x: r.left, y: r.top, w: r.width, h: r.height, need, weight });
-  }
-  return out;
-}
-
 export class SkyWeather {
-  constructor(cloudCanvas, fallingCanvas, atmosphere) {
+  // ink: the theme's PageInk.
+  constructor(cloudCanvas, fallingCanvas, atmosphere, ink) {
+    this.ink = ink;
     this.clouds = new Clouds(cloudCanvas, atmosphere);
     this.falling = new Precipitation(fallingCanvas);
     if (!this.clouds.ok) console.warn('[tabula] WebGL2 is unavailable: rain and snow still fall, clouds do not.');
@@ -60,9 +45,6 @@ export class SkyWeather {
     this.flashAt = Infinity; this.flashStart = -1; this.flashX = .5; this.flashY = .3;
     this.gpuDue = 0; this.inkDue = 0; this.surfacesDue = 0;
     this.glClear = false; this.wasBusy = false;
-    this.inkDark = null; this.halo = '';
-    // Once the first frame is up, the ink may take a moment to change.
-    requestAnimationFrame(() => requestAnimationFrame(() => { if (!this.gone) root.classList.add('sky-weather'); }));
   }
 
   get lost() { return this.clouds.lost; }
@@ -101,7 +83,6 @@ export class SkyWeather {
     this.falling.resize();
     this.gpuDue = 0;
     this.surfacesDue = 0;
-    this.placesDue = 0;
   }
 
   // On a display frame: a step, if this pace's time for one has come.
@@ -124,7 +105,7 @@ export class SkyWeather {
     const e = this.sun.altitude, light = cloudLight(e, d.weight);
     const flash = this.lightning(still, d);
     this.drawClouds(now, elapsed, still, light, flash);
-    if (now >= this.inkDue) { this.inkDue = now + 400; this.chooseInk(e); }
+    if (now >= this.inkDue) { this.inkDue = now + 400; this.showInk(e); }
     this.drawFalling(now, still ? 0 : dt, e, light);
   }
 
@@ -177,53 +158,13 @@ export class SkyWeather {
   }
 
   /* ---------- the page's ink ---------- */
-  // Under a clear sky the rule is the theme's (sun at 5° or lower means light text), so turning the weather on
-  // changes nothing on a clear day. Under clouds the sky as it is drawn decides: what lies behind each piece of text.
-  chooseInk(e) {
-    const d = this.dials, theme = e <= 5;
-    const clouded = Math.max(d.veil * .86, d.cover * .85, d.fog * .55);
-    if (!this.clouds.ok || clouded < .22) {
-      this.setInk(theme, 0, null, 0);
-      this.scene = theme ? .2 : .8;
-      return;
-    }
+  // The sky as it is drawn, clouds and all, goes to the page's ink a few times a second.
+  showInk(e) {
     if (this.flashStart >= 0) return; // lightning is not a reason to change the ink
     const pixels = this.clouds.peek(); // null: still on its way from the GPU, the next call has it
     if (!pixels) return;
-    const zones = this.readZones(pixels);
-    if (!zones.length) return;
-    const { lightText, hard, tone } = pickInk(zones, this.inkDark, theme);
-    this.scene = luminance(tone);
-    // Coming out of a clear sky, the tint grows with the clouds rather than switching on.
-    this.setInk(lightText, hard, tone, smooth(.22, .4, clouded));
-  }
-  // dark: the dark theme, so light text. hard: how much help the ink needs; in-between skies get stronger colours
-  // and a firmer halo. tone: the sky behind the text, which the halo is made of.
-  setInk(dark, hard, tone, tint) {
-    if (dark !== this.inkDark) { this.inkDark = dark; root.dataset.theme = dark ? 'dark' : 'light'; }
-    root.classList.toggle('mid-sky', hard > .12);
-    const halo = haloFor(dark, tone || [.5, .5, .5], hard, tone ? tint : 0);
-    if (halo !== this.halo) { this.halo = halo; root.style.setProperty('--halo', halo); }
-  }
-  // The text on the sky, and what is behind each piece of it. The places are measured now and then: the page
-  // moves only when the window does, a bookmark is added or a widget turns on.
-  readZones(pixels) {
-    const now = performance.now();
-    if (!this.places || now >= this.placesDue) { this.placesDue = now + 2000; this.places = textPlaces(); }
-    const { width: w, height: h } = this.clouds.small, sx = w / innerWidth, sy = h / innerHeight;
-    const zones = [];
-    for (const p of this.places) {
-      const x0 = clamp(Math.floor(p.x * sx), 0, w - 1), x1 = clamp(Math.ceil((p.x + p.w) * sx), x0 + 1, w);
-      const y0 = clamp(Math.floor(p.y * sy), 0, h - 1), y1 = clamp(Math.ceil((p.y + p.h) * sy), y0 + 1, h);
-      const ys = [], rgb = [0, 0, 0];
-      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-        const i = (y * w + x) * 4, c = [pixels[i] / 255, pixels[i + 1] / 255, pixels[i + 2] / 255];
-        ys.push(apcaY(c));
-        rgb[0] += c[0]; rgb[1] += c[1]; rgb[2] += c[2];
-      }
-      zones.push({ ys: Float64Array.from(ys).sort(), rgb: rgb.map(v => v / ys.length), need: p.need, weight: p.weight });
-    }
-    return zones;
+    const { width, height } = this.clouds.small;
+    this.ink.read(pixels, width, height, e <= 5);
   }
 
   /* ---------- what falls, and what it lands on ---------- */
@@ -235,7 +176,7 @@ export class SkyWeather {
       const ambient = NIGHT_SNOW.map((v, i) => (v + (1 - v) * day) * (1 - dusk * .22) + light.lit[i] * dusk * .22);
       this.falling.step(dt, {
         rain: d.rain, fine: d.fine, snow: d.snow, wind: d.wind, ambient,
-        inkDark: 1 - smooth(.3, .66, this.scene ?? .5),
+        inkDark: 1 - smooth(.3, .66, this.ink.scene ?? .5),
         landing: this.landing,
       });
     }
@@ -265,11 +206,8 @@ export class SkyWeather {
     this.falling.setSurfaces(list);
   }
 
-  // Everything this added to the page goes; the canvases are the theme's to remove.
+  // The canvases are the theme's to remove.
   destroy() {
-    this.gone = true;
     this.clouds.destroy();
-    root.classList.remove('sky-weather', 'mid-sky');
-    root.style.removeProperty('--halo');
   }
 }
