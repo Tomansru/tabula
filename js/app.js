@@ -98,6 +98,7 @@ initTodos($('#todos'));
 initBookmarks($('#bookmarks'));
 initSettings();
 initWeatherModal();
+root.classList.remove('booting'); // everything is in place; the sky comes up in this same frame
 startThemes();
 applyMode();
 pullWeather();

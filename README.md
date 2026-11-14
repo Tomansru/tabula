@@ -69,7 +69,7 @@ manifest.json      MV3 manifest, overrides the new tab
 newtab.html        markup + dialogs
 css/tokens.css     brand-book tokens: space, corners, type, frame, motion, typography presets
 css/style.css      light/dark colours, layout and components
-js/boot.js         sync pre-paint: light/dark, typography, captions, background
+js/boot.js         sync pre-paint: light/dark, typography, captions, background, the sky's last picture
 js/app.js          clock, date, wiring
 js/captions.js     corner captions
 js/weather.js      Open-Meteo, the weather widget, sunrise/sunset schedule

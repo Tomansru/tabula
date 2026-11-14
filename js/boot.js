@@ -1,7 +1,11 @@
 // Runs synchronously in <head>: applies light/dark mode and the picture theme's look before first paint.
+// The first paint comes before the page's modules have run, so until they have (app.js takes `booting` off)
+// the page's own pieces stay hidden: a search bar alone on an empty background is not a page yet.
 (() => {
   try {
     const r = document.documentElement;
+    r.classList.add('booting');
+    setTimeout(() => r.classList.remove('booting'), 3000); // whatever goes wrong, the page shows
     const s = JSON.parse(localStorage.getItem('tabula.settings') || '{}');
     // Older settings kept light/dark in `theme` and the picture in bg* keys (see migrateSettings in store.js).
     const legacy = ['auto', 'light', 'dark', 'sun'].includes(s.theme);
@@ -22,6 +26,12 @@
     // The daylight theme sets light/dark from the sun; until it runs, keep what it said last time.
     const ink = JSON.parse(localStorage.getItem('tabula.ink') || 'null');
     if (theme === 'daylight' && ink) dark = ink === 'dark';
+    // And the sky it painted last, if that was not long ago, instead of an empty background (see daylight/firstSky.js).
+    const sky = theme === 'daylight' && JSON.parse(localStorage.getItem('tabula.sky') || 'null');
+    if (sky && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(sky.url) && Math.abs(Date.now() - sky.at) < 30 * 60e3) {
+      r.style.setProperty('--boot-sky', `url(${sky.url})`);
+      r.classList.add('boot-sky');
+    }
     r.dataset.theme = dark ? 'dark' : 'light';
     if (s.lang) r.lang = s.lang;
     if (s.todoCard) r.classList.add('todo-card');

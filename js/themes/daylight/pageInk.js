@@ -5,6 +5,7 @@
 import { clamp } from './astronomy.js';
 import { apcaY, pickInk, haloFor } from './weather/ink.js';
 import { luminance } from './weather/conditions.js';
+import { keepSky } from './firstSky.js';
 
 const root = document.documentElement;
 
@@ -39,6 +40,7 @@ export class PageInk {
   // pixels: the whole window's sky as RGBA bytes, w × h, top row first. byDay: the ink the sun alone would
   // choose (true: light text), which settles a tie.
   read(pixels, w, h, byDay) {
+    keepSky(pixels, w, h); // the same pixels are what the next new tab opens on
     const zones = this.zones(pixels, w, h);
     if (!zones.length) { this.set(byDay, 0, null); return; }
     const { lightText, hard, tone } = pickInk(zones, this.dark, byDay);

@@ -10,6 +10,7 @@ import { Sky } from './sky.js';
 import { CONDITIONS, conditionById, targetDials, readForecast } from './weather/conditions.js';
 import { SkyWeather } from './weather/index.js';
 import { PageInk } from './pageInk.js';
+import { dropSky } from './firstSky.js';
 
 const PLACE_EN = { 'Белград': 'Belgrade', 'Рейкьявик': 'Reykjavík', 'Тромсё': 'Tromsø', 'Нью-Йорк': 'New York', 'Сингапур': 'Singapore', 'Кейптаун': 'Cape Town', 'Сидней': 'Sydney' };
 const placeName = p => (getLang() === 'ru' ? p.name : PLACE_EN[p.name] || p.name);
@@ -282,6 +283,7 @@ export default {
     stopWeather();
     ink?.destroy();
     ink = null;
+    dropSky();
     sky = null;
   },
 };

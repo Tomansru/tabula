@@ -58,6 +58,10 @@ body {
   overflow-x: hidden;
 }
 .has-bg body { background: var(--bg); }
+/* Before the scripts have run (see boot.js): the Breathing sky's last picture of itself as the background, and
+   none of the page's own pieces, which would otherwise show alone for a few frames. */
+.boot-sky body { background: var(--boot-sky) center / 100% 100% no-repeat fixed; }
+.booting :is(.layout, .frame, .gear) { visibility: hidden; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; text-shadow: inherit; }
 [hidden] { display: none !important; }
